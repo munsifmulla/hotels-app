@@ -34,6 +34,56 @@ class User_model extends CI_Model
     return $query->result_array();
   }
 
+  public function get_user_by_id($user_id)
+  {
+    $this->db->where('id', $user_id);
+    $query = $this->db->get('users');
+    return $query->row_array();
+  }
+
+  public function get_hotels_for_user($user_id)
+  {
+    $this->db->select('h.id, h.name, h.address');
+    $this->db->from('hotels h');
+    $this->db->join('user_hotels uh', 'uh.hotel_id = h.id');
+    $this->db->where('uh.user_id', $user_id);
+    $query = $this->db->get();
+    return $query->result_array();
+  }
+
+  public function add_hotel_to_user($user_id, $hotel_id)
+  {
+    $this->load->helper('id'); // Ensure ID helper is loaded
+    $user_hotel_id = generate_unique_id();
+    return $this->db->insert('user_hotels', ['id' => $user_hotel_id, 'user_id' => $user_id, 'hotel_id' => $hotel_id]);
+  }
+
+  public function create_and_assign_hotel($user_id, $hotel_name, $address = NULL)
+  {
+    $this->load->helper('id'); // Ensure ID helper is loaded
+
+    $this->db->trans_start();
+
+    // 1. Create the new hotel
+    $hotel_id = generate_unique_id();
+    $hotel_data = [
+      'id' => $hotel_id,
+      'name' => $hotel_name,
+      'address' => $address
+    ];
+    $this->db->insert('hotels', $hotel_data);
+
+    // 2. Assign the new hotel to the user
+    $this->add_hotel_to_user($user_id, $hotel_id);
+
+    $this->db->trans_complete();
+
+    if ($this->db->trans_status() === FALSE) {
+      return false;
+    }
+    return ['id' => $hotel_id, 'name' => $hotel_name];
+  }
+
   public function register_user($data)
   {
     // We use a transaction to ensure all or nothing is inserted.

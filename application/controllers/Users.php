@@ -1,8 +1,20 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-use \Firebase\JWT\JWT;
-use \Firebase\JWT\Key;
+// Manually load the JWT library files since Composer is not used.
+require_once APPPATH . 'third_party/php-jwt/JWT.php';
+require_once APPPATH . 'third_party/php-jwt/JWTExceptionWithPayloadInterface.php';
+require_once APPPATH . 'third_party/php-jwt/Key.php';
+require_once APPPATH . 'third_party/php-jwt/ExpiredException.php';
+require_once APPPATH . 'third_party/php-jwt/SignatureInvalidException.php';
+require_once APPPATH . 'third_party/php-jwt/BeforeValidException.php';
+
+// Use the firebase/php-jwt library
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Firebase\JWT\SignatureInvalidException;
+use Firebase\JWT\ExpiredException;
+use Firebase\JWT\BeforeValidException;
 
 class Users extends CI_Controller
 {
@@ -13,12 +25,12 @@ class Users extends CI_Controller
   {
     parent::__construct();
     $this->load->model('User_model');
-    $this->load->library(array('form_validation', 'session'));
+    $this->load->model('Hotel_model');
+    $this->load->model('Key_model');
+    $this->load->library(array('form_validation', 'session', 'encryption'));
     // The 'id', 'url', and 'form' helpers are now autoloaded.
 
-    // It's best to store this key in your config file.
-    // e.g., $this->config->item('jwt_key');
-    $this->jwt_key = 'your_super_secret_key';
+    $this->jwt_key = $this->config->item('jwt_key');
   }
 
   public function index()
@@ -79,6 +91,77 @@ class Users extends CI_Controller
         $view_data['active_page'] = 'users/index'; // Keep parent menu active
         $this->load->view('layouts/main', $view_data);
       }
+    }
+  }
+
+  public function manage_hotels($user_id)
+  {
+    $user = $this->User_model->get_user_by_id($user_id);
+    if (!$user) {
+      show_404();
+    }
+
+    $assigned_hotels = $this->User_model->get_hotels_for_user($user_id);
+    $all_hotels = $this->User_model->get_hotels();
+
+    // Filter out hotels that are already assigned to the user
+    $assigned_hotel_ids = array_column($assigned_hotels, 'id');
+    $available_hotels = array_filter($all_hotels, function ($hotel) use ($assigned_hotel_ids) {
+      return !in_array($hotel['id'], $assigned_hotel_ids);
+    });
+
+    $view_data['user'] = $user;
+    $view_data['assigned_hotels'] = $assigned_hotels;
+    $view_data['available_hotels'] = $available_hotels;
+    $view_data['title'] = 'Manage Hotels for ' . html_escape($user['username']);
+    $view_data['main_content'] = 'users/manage_hotels';
+    $view_data['active_page'] = 'users/index';
+    $this->load->view('layouts/main', $view_data);
+  }
+
+  public function add_hotel_to_user()
+  {
+    $user_id = $this->input->post('user_id');
+    $hotel_id = $this->input->post('hotel_id');
+
+    if (!$user_id || !$hotel_id) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'User ID and Hotel ID are required.']));
+      return;
+    }
+
+    if ($this->User_model->add_hotel_to_user($user_id, $hotel_id)) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'success', 'message' => 'Hotel added successfully.']));
+    } else {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'Failed to add hotel.']));
+    }
+  }
+
+  public function create_hotel_for_user()
+  {
+    $this->form_validation->set_rules('user_id', 'User ID', 'required|integer');
+    $this->form_validation->set_rules('hotel_name', 'Hotel Name', 'trim|required');
+    $this->form_validation->set_rules('address', 'Address', 'trim');
+
+    if ($this->form_validation->run() == FALSE) {
+      $this->output
+        ->set_content_type('application/json')
+        ->set_output(json_encode(['status' => 'error', 'message' => validation_errors()]));
+      return;
+    }
+
+    $user_id = $this->input->post('user_id');
+    $hotel_name = $this->input->post('hotel_name');
+    $address = $this->input->post('address');
+
+    // The model method will handle the transaction
+    $new_hotel = $this->User_model->create_and_assign_hotel($user_id, $hotel_name, $address);
+    if ($new_hotel) {
+      $this->output->set_content_type('application/json')->set_output(json_encode([
+        'status' => 'success',
+        'message' => 'Hotel created and assigned successfully.'
+      ]));
+    } else {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'Failed to create or assign hotel.']));
     }
   }
 
@@ -181,5 +264,150 @@ class Users extends CI_Controller
   {
     // You can build your login page here
     echo "Login page";
+  }
+
+  public function update_hotel()
+  {
+    $this->form_validation->set_rules('hotel_id', 'Hotel ID', 'required|integer');
+    $this->form_validation->set_rules('name', 'Hotel Name', 'trim|required');
+    $this->form_validation->set_rules('address', 'Address', 'trim');
+
+    if ($this->form_validation->run() == FALSE) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => validation_errors()]));
+      return;
+    }
+
+    $hotel_id = $this->input->post('hotel_id');
+    $data = [
+      'name' => $this->input->post('name'),
+      'address' => $this->input->post('address')
+    ];
+
+    if ($this->Hotel_model->update_hotel($hotel_id, $data)) {
+      $updated_hotel = $this->Hotel_model->get_hotel_by_id($hotel_id);
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'success', 'message' => 'Hotel updated successfully.', 'hotel' => $updated_hotel]));
+    } else {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'Failed to update hotel.']));
+    }
+  }
+
+  public function remove_hotel_from_user()
+  {
+    $this->form_validation->set_rules('user_id', 'User ID', 'required|integer');
+    $this->form_validation->set_rules('hotel_id', 'Hotel ID', 'required|integer');
+
+    if ($this->form_validation->run() == FALSE) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => validation_errors()]));
+      return;
+    }
+
+    $user_id = $this->input->post('user_id');
+    $hotel_id = $this->input->post('hotel_id');
+
+    if ($this->Hotel_model->remove_hotel_from_user($user_id, $hotel_id)) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'success', 'message' => 'Hotel removed from user successfully.']));
+    } else {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'Failed to remove hotel from user.']));
+    }
+  }
+
+  public function manage_keys($user_id)
+  {
+    $user = $this->User_model->get_user_by_id($user_id);
+    if (!$user) {
+      show_404();
+    }
+
+    $view_data['user'] = $user;
+    $view_data['assigned_hotels'] = $this->User_model->get_hotels_for_user($user_id);
+    $existing_keys = $this->Key_model->get_keys_for_user($user_id);
+    // Encrypt the ID for display purposes
+    foreach ($existing_keys as &$key) {
+      // $key['hotel_ids'] = $this->Key_model->get_hotels_for_key($key['id']);
+      $key['encrypted_id'] = $this->encryption->encrypt($key['id']);
+    }
+    $view_data['existing_keys'] = $existing_keys;
+
+    $view_data['title'] = 'Manage API Keys for ' . html_escape($user['username']);
+    $view_data['main_content'] = 'users/manage_keys';
+    $view_data['active_page'] = 'users/index';
+    $this->load->view('layouts/main', $view_data);
+  }
+
+  public function create_key()
+  {
+    $this->form_validation->set_rules('user_id', 'User ID', 'required|integer');
+    $this->form_validation->set_rules('start_date', 'Start Date', 'required');
+    $this->form_validation->set_rules('end_date', 'End Date', 'required');
+    $this->form_validation->set_rules('hotel_ids[]', 'Hotels', 'required');
+
+    if ($this->form_validation->run() == FALSE) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => validation_errors()]));
+      return;
+    }
+
+    $user_id = $this->input->post('user_id');
+    $start_date = $this->input->post('start_date');
+    $end_date = $this->input->post('end_date');
+    $hotel_ids = $this->input->post('hotel_ids');
+
+    // JWT Payload
+    $payload = [
+      'iss' => base_url(), // Issuer
+      'aud' => base_url(), // Audience
+      'iat' => strtotime($start_date), // Issued at
+      'nbf' => strtotime($start_date), // Not before
+      'exp' => strtotime($end_date), // Expiration
+      'data' => [
+        'userId' => $user_id,
+        'hotelIds' => array_map('intval', $hotel_ids)
+      ]
+    ];
+
+    $jwt = JWT::encode($payload, $this->jwt_key, 'HS256');
+
+    $key_data = [
+      'user_id' => $user_id,
+      'token' => $jwt,
+      'start_date' => $start_date,
+      'end_date' => $end_date,
+      'status' => 'generated' // Default status
+    ];
+
+    $new_key_id = $this->Key_model->create_key($key_data, $hotel_ids);
+    if ($new_key_id) {
+      $this->output->set_content_type('application/json')->set_output(json_encode([
+        'status' => 'success',
+        'message' => 'API Key created successfully.',
+        'token' => $jwt,
+        'encrypted_id' => $this->encryption->encrypt($new_key_id)
+      ]));
+    } else {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'Failed to create API Key.']));
+    }
+  }
+
+  public function delete_key()
+  {
+    $this->form_validation->set_rules('key_id', 'Key ID', 'required');
+
+    if ($this->form_validation->run() == FALSE) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => validation_errors()]));
+      return;
+    }
+
+    $encrypted_key_id = $this->input->post('key_id');
+    $key_id = $this->encryption->decrypt($encrypted_key_id);
+
+    if (!$key_id) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'Invalid Key ID.']));
+      return;
+    }
+
+    if ($this->Key_model->delete_key($key_id)) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'success', 'message' => 'API Key deleted successfully.']));
+    } else {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete API Key.']));
+    }
   }
 }

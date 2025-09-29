@@ -127,6 +127,189 @@ $(document).ready(function () {
 			});
 		});
 	}
+
+	// Check if the add hotel form exists
+	if ($("#addHotelForm").length) {
+		$("#addHotelForm").on("submit", function (e) {
+			e.preventDefault();
+			var form = $(this);
+			$.ajax({
+				type: "POST",
+				url: form.attr("action"),
+				data: form.serialize(),
+				dataType: "json",
+				success: function (response) {
+					if (response.status === "success") {
+						location.reload(); // Reload to see the new hotel in the list
+					} else {
+						alert("Error: " + response.message);
+					}
+				},
+			});
+		});
+	}
+
+	// Check if the edit hotel modal exists
+	if ($("#editHotelModal").length) {
+		$("#editHotelModal").on("show.bs.modal", function (event) {
+			var button = $(event.relatedTarget);
+			var hotelId = button.data("hotel-id");
+			var hotelName = button.data("hotel-name");
+			var hotelAddress = button.data("hotel-address");
+
+			var modal = $(this);
+			modal.find(".modal-title").text("Edit " + hotelName);
+			modal.find("#edit-hotel-id").val(hotelId);
+			modal.find("#edit-hotel-name").val(hotelName);
+			modal.find("#edit-hotel-address").val(hotelAddress);
+			$("#edit-hotel-error").hide();
+		});
+
+		$("#editHotelForm").on("submit", function (e) {
+			e.preventDefault();
+			var form = $(this);
+			$.ajax({
+				type: "POST",
+				url: form.attr("action"),
+				data: form.serialize(),
+				dataType: "json",
+				success: function (response) {
+					if (response.status === "success") {
+						// Update the hotel name in the table
+						$("#hotel-name-" + response.hotel.id).text(response.hotel.name);
+
+						// Update the data attributes on the edit button
+						var editButton = $(
+							'button[data-hotel-id="' +
+								response.hotel.id +
+								'"][data-target="#editHotelModal"]'
+						);
+						editButton.data("hotel-name", response.hotel.name);
+						editButton.data("hotel-address", response.hotel.address);
+
+						$("#editHotelModal").modal("hide");
+					} else {
+						$("#edit-hotel-error").html(response.message).show();
+					}
+				},
+			});
+		});
+	}
+
+	// Check if the remove hotel modal exists
+	if ($("#removeHotelModal").length) {
+		$("#removeHotelModal").on("show.bs.modal", function (event) {
+			var button = $(event.relatedTarget);
+			var userId = button.data("user-id");
+			var hotelId = button.data("hotel-id");
+			var hotelName = button.data("hotel-name");
+
+			var modal = $(this);
+			modal.find("#remove-user-id").val(userId);
+			modal.find("#remove-hotel-id").val(hotelId);
+			modal.find("#remove-hotel-name").text(hotelName);
+		});
+
+		$("#removeHotelForm").on("submit", function (e) {
+			e.preventDefault();
+			var form = $(this);
+			var hotelId = form.find("#remove-hotel-id").val();
+			$.ajax({
+				type: "POST",
+				url: form.attr("action"),
+				data: form.serialize(),
+				dataType: "json",
+				success: function (response) {
+					if (response.status === "success") {
+						$("#hotel-row-" + hotelId).remove();
+						$("#removeHotelModal").modal("hide");
+					} else {
+						alert("Error: " + response.message);
+					}
+				},
+			});
+		});
+	}
+
+	// Check if the create key modal exists
+	if ($("#createKeyModal").length) {
+		$("#createKeyModal").on("show.bs.modal", function (event) {
+			// Reset form to initial state
+			$("#key-form-container").show();
+			$("#key-success-container").hide();
+			$("#create-key-error").hide();
+			$("#create-key-submit-btn").show();
+			$("#createKeyForm")[0].reset();
+		});
+
+		$("#createKeyForm").on("submit", function (e) {
+			e.preventDefault();
+			var form = $(this);
+			$.ajax({
+				type: "POST",
+				url: form.attr("action"),
+				data: form.serialize(),
+				dataType: "json",
+				success: function (response) {
+					if (response.status === "success") {
+						$("#key-form-container").hide();
+						$("#key-success-container").show();
+						$("#new-key-id-field").val(response.encrypted_id);
+						$("#create-key-submit-btn").hide();
+
+						// Add a click handler for the new copy button
+						$("#copy-new-key-id-btn").on("click", function () {
+							copyKeyToClipboard(response.encrypted_id, this);
+						});
+
+						// We add a listener to the modal close to reload the page
+						$("#createKeyModal").on("hidden.bs.modal", function () {
+							window.location.reload();
+						});
+					} else {
+						$("#create-key-error").html(response.message).show();
+					}
+				},
+				error: function () {
+					$("#create-key-error").html("An unexpected error occurred.").show();
+				},
+			});
+		});
+	}
+	// Check if the delete key modal exists
+	if ($("#deleteKeyModal").length) {
+		$("#deleteKeyModal").on("show.bs.modal", function (event) {
+			var button = $(event.relatedTarget);
+			var keyId = button.data("key-id");
+			var keyDisplayId = button.data("key-display-id");
+
+			var modal = $(this);
+			modal.find("#delete-key-id").val(keyId);
+			modal.find("#delete-key-display-id").text(keyDisplayId);
+		});
+
+		$("#deleteKeyForm").on("submit", function (e) {
+			e.preventDefault();
+			var form = $(this);
+			$.ajax({
+				type: "POST",
+				url: form.attr("action"),
+				data: form.serialize(),
+				dataType: "json",
+				success: function (response) {
+					if (response.status === "success") {
+						$("#deleteKeyModal").modal("hide");
+						location.reload();
+					} else {
+						alert("Error: " + response.message);
+					}
+				},
+				error: function () {
+					alert("An unexpected error occurred.");
+				},
+			});
+		});
+	}
 });
 
 function copyToClipboard(elementId, button) {
@@ -140,4 +323,27 @@ function copyToClipboard(elementId, button) {
 		button.innerHTML = originalText;
 	}, 2000);
 	window.getSelection().removeAllRanges();
+}
+
+function copyKeyToClipboard(token, button) {
+	if (!navigator.clipboard) {
+		alert("Clipboard API not available. Please copy the key manually.");
+		return;
+	}
+	navigator.clipboard
+		.writeText(token)
+		.then(function () {
+			var originalIcon = button.innerHTML;
+			var originalTitle = button.title;
+			button.innerHTML = '<i class="fa fa-check text-success"></i>';
+			button.title = "Copied!";
+			setTimeout(function () {
+				button.innerHTML = originalIcon;
+				button.title = originalTitle;
+			}, 2000);
+		})
+		.catch(function (err) {
+			console.error("Could not copy text: ", err);
+			alert("Failed to copy the key.");
+		});
 }

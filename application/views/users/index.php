@@ -22,42 +22,40 @@
     <table class="table table-striped">
       <thead>
         <tr>
-          <th>ID</th>
+          <th>#</th>
           <th>Username</th>
           <th>Business Name</th>
-          <th>Password</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         <?php if (!empty($users)): ?>
+          <?php $sn = 1; ?>
           <?php foreach ($users as $user): ?>
             <tr>
-              <td><?php echo $user['id']; ?></td>
+              <td><?php echo $sn++; ?></td>
               <td><?php echo html_escape($user['username']); ?></td>
               <td><?php echo html_escape($user['business_name']); ?></td>
-              <td>
-                <div class="input-group">
-                  <span id="password-<?php echo $user['id']; ?>" class="form-control"
-                    style="border: none; background: transparent; padding-left: 0;">****</span>
-                  <div class="input-group-append">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" title="Reset Password"
-                      data-toggle="modal" data-target="#resetPasswordModal" data-userid="<?php echo $user['id']; ?>"
-                      data-username="<?php echo html_escape($user['username']); ?>">
-                      <i class="fa fa-eye" id="eye-icon-<?php echo $user['id']; ?>"></i>
-                    </button>
-                  </div>
-                </div>
-              </td>
-              <td>
+              <td class="d-flex">
                 <a href="#" class="btn btn-sm btn-info" data-toggle="modal" data-target="#editUserModal"
                   data-userid="<?php echo $user['id']; ?>" data-username="<?php echo html_escape($user['username']); ?>"
                   data-email="<?php echo html_escape($user['email']); ?>"
-                  data-businessname="<?php echo html_escape($user['business_name']); ?>">Edit</a>
-                <a href="#" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteUserModal"
-                  data-userid="<?php echo $user['id']; ?>"
-                  data-username="<?php echo html_escape($user['username']); ?>">Delete</a>
-                <a href="#" class="btn btn-sm btn-secondary">Manage Key</a>
+                  data-businessname="<?php echo html_escape($user['business_name']); ?>" title="Edit User"><i
+                    class="fa fa-edit"></i> User</a>
+                <button class="btn btn-sm btn-warning ml-1" type="button" title="Reset Password" data-toggle="modal"
+                  data-target="#resetPasswordModal" data-userid="<?php echo $user['id']; ?>"
+                  data-username="<?php echo html_escape($user['username']); ?>">
+                  <i class="fa fa-key"></i> Password
+                </button>
+                <a href="<?php echo site_url('users/manage_hotels/' . $user['id']); ?>" class="btn btn-sm btn-success ml-1"
+                  title="Manage Hotels"><i class="fa fa-building"></i> Hotels
+                </a>
+                <a href="<?php echo site_url('users/manage_keys/' . $user['id']); ?>" class="btn btn-sm btn-dark ml-1" title="Manage API Keys">
+                  <i class="fa fa-key"></i> Manage Keys
+                </a>
+                <a href="#" class="btn btn-sm btn-danger ml-1" title="Delete User" data-toggle="modal"
+                  data-target="#deleteUserModal" data-userid="<?php echo $user['id']; ?>"
+                  data-username="<?php echo html_escape($user['username']); ?>"><i class="fa fa-trash"></i></a>
               </td>
             </tr>
           <?php endforeach; ?>

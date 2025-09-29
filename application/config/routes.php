@@ -1,5 +1,5 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
+defined('BASEPATH') or exit('No direct script access allowed');
 
 /*
 | -------------------------------------------------------------------------
@@ -52,3 +52,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $route['default_controller'] = 'welcome';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
+
+// API Routes
+$route['api/login'] = 'api/login';
+$route['api/activate_key'] = 'api/activate_key';
+$route['api/hotels'] = 'api/get_hotels';
+
+// API Routes for Room Types
+$route['api/room_types/(:num)'] = 'api/get_room_types/$1'; // GET
+$route['api/room_types/create'] = 'api/create_room_type'; // POST
+$route['api/room_types/update'] = 'api/update_room_type'; // POST
+$route['api/room_types/delete'] = 'api/delete_room_type'; // POST

@@ -326,7 +326,7 @@ $config['cache_query_string'] = FALSE;
 | https://codeigniter.com/userguide3/libraries/encryption.html
 |
 */
-$config['encryption_key'] = '';
+$config['encryption_key'] = 'd1fe2a8b9c3d4e5f6a7b8c9d0e1f2a3b';
 
 /*
 |--------------------------------------------------------------------------
@@ -530,3 +530,13 @@ $config['rewrite_short_tags'] = FALSE;
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
 $config['proxy_ips'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| JWT Key
+|--------------------------------------------------------------------------
+|
+| The secret key used to sign JSON Web Tokens.
+|
+*/
+$config['jwt_key'] = 'fffsfdlkuyijddksdskdljfuehfjdnjfcnsddkjkjfhesuif';
