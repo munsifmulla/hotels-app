@@ -462,6 +462,33 @@ const AuthProvider = ({ children }) => {
 		}
 	};
 
+	const getInvoiceByBookingId = async (bookingId) => {
+		if (!token) {
+			throw new Error("Authentication token not found.");
+		}
+
+		const response = await fetch(`/api/invoices/booking/${bookingId}`, {
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token}`,
+			},
+		});
+
+		// If no invoice is found (404), we return null, which is not an error in this case.
+		if (response.status === 404) {
+			return null;
+		}
+
+		const data = await response.json();
+
+		if (response.ok) {
+			return data;
+		} else {
+			throw new Error(data.message || "Failed to fetch invoice");
+		}
+	};
+
 	const value = {
 		token,
 		isAuthenticated: !!token,
@@ -485,6 +512,7 @@ const AuthProvider = ({ children }) => {
 		createInvoice,
 		updateBooking,
 		getGuest,
+		getInvoiceByBookingId,
 	};
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

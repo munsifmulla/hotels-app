@@ -1,9 +1,14 @@
-import React from "react";
-import { Box, Typography, Divider } from "@mui/material";
+import React, { useRef } from "react";
+import { Box, Typography, Divider, Button } from "@mui/material";
 import { QRCodeSVG as QRCode } from "qrcode.react";
+import { useReactToPrint } from "react-to-print";
 
 const PrintableInvoice = React.forwardRef(
 	({ invoice, booking, guest }, ref) => {
+		const contentRef = useRef();
+		const handlePrint = useReactToPrint({
+			contentRef,
+		});
 		if (!invoice || !booking || !guest) return null;
 
 		// Helper function to generate TLV (Tag-Length-Value) for ZATCA e-invoicing QR code
@@ -58,73 +63,79 @@ const PrintableInvoice = React.forwardRef(
 		};
 
 		return (
-			<Box ref={ref} sx={{ p: 4, border: "1px solid #ccc", my: 2 }}>
-				<Typography variant="h4" gutterBottom>
-					Invoice
-				</Typography>
-				<Typography variant="h6">Hotel Name</Typography>
-				<Divider sx={{ my: 2 }} />
-				<Box sx={{ display: "flex", justifyContent: "space-between" }}>
-					<Typography>
-						<b>Invoice ID:</b> {invoice.id}
+			<Box>
+				<Box ref={contentRef} sx={{ p: 4, border: "1px solid #ccc", my: 2 }}>
+					<Typography variant="h4" gutterBottom>
+						Invoice
 					</Typography>
-					<Typography>
-						<b>Date:</b> {new Date(invoice.invoice_date).toLocaleDateString()}
-					</Typography>
-				</Box>
-				<Box sx={{ mt: 2 }}>
-					<Typography>
-						<b>Booking ID:</b> {booking.id}
-					</Typography>
-					<Typography>
-						<b>Guest Name:</b> {guest.first_name} {guest.last_name}
-					</Typography>
-					{guest.govt_id && (
+					<Typography variant="h6">Hotel Name</Typography>
+					<Divider sx={{ my: 2 }} />
+					<Box sx={{ display: "flex", justifyContent: "space-between" }}>
 						<Typography>
-							<b>Government ID:</b> {guest.govt_id}
+							<b>Invoice ID:</b> {invoice.id}
 						</Typography>
-					)}
+						<Typography>
+							<b>Date:</b> {new Date(invoice.invoice_date).toLocaleDateString()}
+						</Typography>
+					</Box>
+					<Box sx={{ mt: 2 }}>
+						<Typography>
+							<b>Booking ID:</b> {booking.id}
+						</Typography>
+						<Typography>
+							<b>Guest Name:</b> {guest.first_name} {guest.last_name}
+						</Typography>
+						{guest.govt_id && (
+							<Typography>
+								<b>Government ID:</b> {guest.govt_id}
+							</Typography>
+						)}
+					</Box>
+					<Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
+						<Typography>
+							<b>Check-in:</b>{" "}
+							{new Date(booking.check_in_date).toLocaleDateString()}
+						</Typography>
+						<Typography>
+							<b>Check-out:</b>{" "}
+							{new Date(booking.check_out_date).toLocaleDateString()}
+						</Typography>
+					</Box>
+					<Divider sx={{ my: 2 }} />
+					<Box sx={{ display: "flex", justifyContent: "space-between" }}>
+						<Typography>Total Amount:</Typography>
+						<Typography>{invoice.total_amount}</Typography>
+					</Box>
+					<Box sx={{ display: "flex", justifyContent: "space-between" }}>
+						<Typography>Discount:</Typography>
+						<Typography color="error">- {invoice.discount}</Typography>
+					</Box>
+					<Divider sx={{ my: 1 }} />
+					<Box sx={{ display: "flex", justifyContent: "space-between" }}>
+						<Typography>Subtotal:</Typography>
+						<Typography>{invoice.final_amount}</Typography>
+					</Box>
+					<Box sx={{ display: "flex", justifyContent: "space-between" }}>
+						<Typography>VAT ({invoice.vat_percent}%):</Typography>
+						<Typography>{invoice.vat_amount}</Typography>
+					</Box>
+					<Divider sx={{ my: 1 }} />
+					<Box sx={{ display: "flex", justifyContent: "space-between" }}>
+						<Typography variant="h6">Grand Total:</Typography>
+						<Typography variant="h6">
+							{(
+								parseFloat(invoice.final_amount) +
+								parseFloat(invoice.vat_amount)
+							).toFixed(2)}
+						</Typography>
+					</Box>
+					<Box sx={{ mt: 4, textAlign: "center" }}>
+						<QRCode value={generateZatcaTlv()} />
+					</Box>
 				</Box>
-				<Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
-					<Typography>
-						<b>Check-in:</b>{" "}
-						{new Date(booking.check_in_date).toLocaleDateString()}
-					</Typography>
-					<Typography>
-						<b>Check-out:</b>{" "}
-						{new Date(booking.check_out_date).toLocaleDateString()}
-					</Typography>
-				</Box>
-				<Divider sx={{ my: 2 }} />
-				<Box sx={{ display: "flex", justifyContent: "space-between" }}>
-					<Typography>Total Amount:</Typography>
-					<Typography>{invoice.total_amount}</Typography>
-				</Box>
-				<Box sx={{ display: "flex", justifyContent: "space-between" }}>
-					<Typography>Discount:</Typography>
-					<Typography color="error">- {invoice.discount}</Typography>
-				</Box>
-				<Divider sx={{ my: 1 }} />
-				<Box sx={{ display: "flex", justifyContent: "space-between" }}>
-					<Typography>Subtotal:</Typography>
-					<Typography>{invoice.final_amount}</Typography>
-				</Box>
-				<Box sx={{ display: "flex", justifyContent: "space-between" }}>
-					<Typography>VAT ({invoice.vat_percent}%):</Typography>
-					<Typography>{invoice.vat_amount}</Typography>
-				</Box>
-				<Divider sx={{ my: 1 }} />
-				<Box sx={{ display: "flex", justifyContent: "space-between" }}>
-					<Typography variant="h6">Grand Total:</Typography>
-					<Typography variant="h6">
-						{(
-							parseFloat(invoice.final_amount) + parseFloat(invoice.vat_amount)
-						).toFixed(2)}
-					</Typography>
-				</Box>
-				<Box sx={{ mt: 4, textAlign: "center" }}>
-					<QRCode value={generateZatcaTlv()} />
-				</Box>
+				<Button onClick={handlePrint} variant="contained" fullWidth>
+					Print Invoice
+				</Button>
 			</Box>
 		);
 	}

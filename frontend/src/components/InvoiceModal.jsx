@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	Modal,
 	Box,
@@ -13,7 +13,6 @@ import {
 	MenuItem,
 } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
-import { useReactToPrint } from "react-to-print";
 import PrintableInvoice from "./PrintableInvoice";
 
 const modalStyle = {
@@ -28,7 +27,7 @@ const modalStyle = {
 	borderRadius: 2,
 };
 
-const InvoiceModal = ({ open, onClose, booking }) => {
+const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 	const [discount, setDiscount] = useState(0);
 	const [vatPercent, setVatPercent] = useState(15); // Default VAT
 	const [modeOfPayment, setModeOfPayment] = useState("Cash");
@@ -42,12 +41,12 @@ const InvoiceModal = ({ open, onClose, booking }) => {
 	const [guestDetails, setGuestDetails] = useState(null);
 	const { createInvoice, getGuest } = useAuth();
 
-	const invoicePrintRef = useRef();
-	const handlePrint = useReactToPrint({
-		content: () => invoicePrintRef.current,
-	});
-
 	useEffect(() => {
+		// If an invoice is passed in, set it and skip calculations
+		if (existingInvoice) {
+			setGeneratedInvoice(existingInvoice);
+		}
+
 		const fetchGuest = async () => {
 			if (booking?.guest_id) {
 				try {
@@ -72,7 +71,7 @@ const InvoiceModal = ({ open, onClose, booking }) => {
 			setVatAmount(vat.toFixed(2));
 			setGrandTotal(grand.toFixed(2));
 		}
-	}, [booking, discount, vatPercent, getGuest]);
+	}, [booking, discount, vatPercent, getGuest, existingInvoice]);
 
 	const handleGenerateInvoice = async () => {
 		setLoading(true);
@@ -105,6 +104,7 @@ const InvoiceModal = ({ open, onClose, booking }) => {
 			setVatPercent(15);
 			setModeOfPayment("Cash");
 			setTransactionNumber("");
+			setError("");
 		}, 300);
 	};
 
@@ -114,7 +114,6 @@ const InvoiceModal = ({ open, onClose, booking }) => {
 				{generatedInvoice ? (
 					<PrintableInvoice
 						guest={guestDetails}
-						ref={invoicePrintRef}
 						invoice={generatedInvoice}
 						booking={booking}
 					/>
@@ -203,15 +202,7 @@ const InvoiceModal = ({ open, onClose, booking }) => {
 							<Button onClick={handleClose} sx={{ mr: 1 }}>
 								Cancel
 							</Button>
-							{generatedInvoice && (
-								<Button
-									onClick={handlePrint}
-									variant="contained"
-									sx={{ mr: 1 }}
-								>
-									Print Invoice
-								</Button>
-							)}
+
 							<Button
 								onClick={handleGenerateInvoice}
 								variant="contained"

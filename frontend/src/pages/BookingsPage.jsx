@@ -23,10 +23,17 @@ const BookingsPage = () => {
 	const [guests, setGuests] = useState([]);
 	const [rooms, setRooms] = useState([]);
 	const [selectedBooking, setSelectedBooking] = useState(null);
+	const [existingInvoice, setExistingInvoice] = useState(null);
 	const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
-	const { getBookings, getGuests, getRooms, updateBooking } = useAuth();
+	const {
+		getBookings,
+		getGuests,
+		getRooms,
+		updateBooking,
+		getInvoiceByBookingId,
+	} = useAuth();
 	const { hotelId } = useParams();
 	const { t } = useTranslation();
 
@@ -69,12 +76,26 @@ const BookingsPage = () => {
 			await updateBooking(booking.id, { status: "checked-out" });
 			// Then, open the invoice modal
 			setSelectedBooking(booking);
+			setExistingInvoice(null); // Ensure we are in generation mode
 			setIsInvoiceModalOpen(true);
 			// Refresh data in the background
 			fetchData();
 		} catch (err) {
 			// You might want to show a snackbar error here
 			console.error("Checkout failed:", err);
+		}
+	};
+
+	const handleViewInvoice = async (booking) => {
+		try {
+			// Check if an invoice already exists
+			const invoice = await getInvoiceByBookingId(booking.id);
+			setSelectedBooking(booking);
+			setExistingInvoice(invoice); // This will be null if no invoice is found
+			setIsInvoiceModalOpen(true);
+		} catch (err) {
+			console.error("Failed to fetch invoice:", err);
+			setError("Could not retrieve invoice information.");
 		}
 	};
 
@@ -131,7 +152,15 @@ const BookingsPage = () => {
 										<Chip label={booking.status} size="small" />
 									</TableCell>
 									<TableCell align="right">
-										{booking.status !== "checked-out" && (
+										{booking.status === "checked-out" ? (
+											<Button
+												variant="outlined"
+												size="small"
+												onClick={() => handleViewInvoice(booking)}
+											>
+												View Invoice
+											</Button>
+										) : (
 											<Button
 												variant="outlined"
 												size="small"
@@ -157,6 +186,7 @@ const BookingsPage = () => {
 					open={isInvoiceModalOpen}
 					onClose={() => setIsInvoiceModalOpen(false)}
 					booking={selectedBooking}
+					existingInvoice={existingInvoice}
 				/>
 			)}
 		</Box>
