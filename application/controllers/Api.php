@@ -22,6 +22,10 @@ class Api extends CI_Controller
     $this->load->model('User_model');
     $this->load->model('Key_model');
     $this->load->model('Room_type_model');
+    $this->load->model('Room_model');
+    $this->load->model('Guest_model');
+    $this->load->model('Booking_model');
+    $this->load->model('Invoice_model');
     $this->load->library('encryption');
     $this->output->set_content_type('application/json');
   }
@@ -386,6 +390,725 @@ class Api extends CI_Controller
       $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Room type deleted successfully.']));
     } else {
       $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete room type. It might be in use.']));
+    }
+  }
+
+  public function create_room()
+  {
+    // 1. Validate token
+    $payload = $this->_validate_token();
+    if (!$payload) {
+      return;
+    }
+
+    // 2. Get input and validate
+    $input = json_decode(file_get_contents('php://input'), true);
+    $hotel_id = isset($input['hotel_id']) ? $input['hotel_id'] : null;
+    $room_type_id = isset($input['room_type_id']) ? $input['room_type_id'] : null;
+    $room_number = isset($input['room_number']) ? trim($input['room_number']) : null;
+    $price_per_night = isset($input['price_per_night']) ? $input['price_per_night'] : null;
+
+    if (!$hotel_id || !$room_type_id || !$room_number || $price_per_night === null) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Hotel ID, Room Type ID, Room Number, and Price are required.']));
+      return;
+    }
+
+    // 3. Authorization Check
+    $subscription_key_data = $this->Key_model->get_keys_for_user($payload->data->userId);
+    $db_token = $subscription_key_data[0]['token'];
+    $db_payload = JWT::decode($db_token, new Key($this->config->item('jwt_key'), 'HS256'));
+    $subscribed_hotel_ids = isset($db_payload->data->hotelIds) ? (array) $db_payload->data->hotelIds : [];
+
+    if (!in_array($hotel_id, $subscribed_hotel_ids)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to add rooms to this hotel.']));
+      return;
+    }
+
+    // 4. Check for unique room number within the hotel
+    if (!$this->Room_model->is_room_number_unique($hotel_id, $room_number)) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'This room number already exists for this hotel.']));
+      return;
+    }
+
+    // 5. Prepare data for insertion
+    $data = [
+      'hotel_id' => $hotel_id,
+      'room_type_id' => $room_type_id,
+      'room_number' => $room_number,
+      'price_per_night' => $price_per_night,
+      'status' => 'vacant', // Default status
+      'number_of_beds' => isset($input['number_of_beds']) ? (int) $input['number_of_beds'] : 1,
+      'number_of_bathrooms' => isset($input['number_of_bathrooms']) ? (int) $input['number_of_bathrooms'] : 1,
+      'has_tv' => isset($input['has_tv']) ? (bool) $input['has_tv'] : false,
+      'has_kitchen' => isset($input['has_kitchen']) ? (bool) $input['has_kitchen'] : false,
+      'has_fridge' => isset($input['has_fridge']) ? (bool) $input['has_fridge'] : false,
+      'has_ac' => isset($input['has_ac']) ? (bool) $input['has_ac'] : false,
+    ];
+
+    // 6. Create room
+    $new_room = $this->Room_model->create_room($data);
+    if ($new_room) {
+      $this->output->set_status_header(201)->set_output(json_encode($new_room));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to create room.']));
+    }
+  }
+
+  public function get_rooms($hotel_id)
+  {
+    // 1. Validate token and get user data
+    $payload = $this->_validate_token();
+    if (!$payload) {
+      return;
+    }
+
+    // 2. Authorization Check: Does the user's key grant access to this hotel?
+    $subscription_key_data = $this->Key_model->get_keys_for_user($payload->data->userId);
+    if (empty($subscription_key_data)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'No subscription key found for this user.']));
+      return;
+    }
+
+    try {
+      $db_token = $subscription_key_data[0]['token'];
+      $db_payload = JWT::decode($db_token, new Key($this->config->item('jwt_key'), 'HS256'));
+      $subscribed_hotel_ids = isset($db_payload->data->hotelIds) ? (array) $db_payload->data->hotelIds : [];
+    } catch (Exception $e) {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Could not read subscription key permissions.']));
+      return;
+    }
+
+    if (!in_array($hotel_id, $subscribed_hotel_ids)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not subscribed to this hotel.']));
+      return;
+    }
+
+    // 3. Fetch and return rooms
+    $rooms = $this->Room_model->get_rooms_for_hotel($hotel_id);
+    $this->output->set_status_header(200)->set_output(json_encode($rooms));
+  }
+
+  public function update_room()
+  {
+    // 1. Validate token
+    $payload = $this->_validate_token();
+    if (!$payload) {
+      return;
+    }
+
+    // 2. Get input and validate
+    $input = json_decode(file_get_contents('php://input'), true);
+    $room_id = isset($input['room_id']) ? $input['room_id'] : null;
+
+    if (!$room_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Room ID is required.']));
+      return;
+    }
+
+    // 3. Authorization Check
+    $room = $this->Room_model->get_room_by_id($room_id);
+    if (!$room) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Room not found.']));
+      return;
+    }
+
+    $subscription_key_data = $this->Key_model->get_keys_for_user($payload->data->userId);
+    $db_token = $subscription_key_data[0]['token'];
+    $db_payload = JWT::decode($db_token, new Key($this->config->item('jwt_key'), 'HS256'));
+    $subscribed_hotel_ids = isset($db_payload->data->hotelIds) ? (array) $db_payload->data->hotelIds : [];
+
+    if (!in_array($room['hotel_id'], $subscribed_hotel_ids)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to modify this room.']));
+      return;
+    }
+
+    // 4. Check for unique room number if it's being changed
+    if (isset($input['room_number']) && $input['room_number'] !== $room['room_number']) {
+      if (!$this->Room_model->is_room_number_unique($room['hotel_id'], $input['room_number'], $room_id)) {
+        $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'This room number already exists for this hotel.']));
+        return;
+      }
+    }
+
+    // 5. Prepare data for update
+    $data = [];
+    $updatable_fields = [
+      'room_type_id',
+      'room_number',
+      'price_per_night',
+      'status',
+      'number_of_beds',
+      'number_of_bathrooms',
+      'has_tv',
+      'has_kitchen',
+      'has_fridge',
+      'has_ac'
+    ];
+
+    foreach ($updatable_fields as $field) {
+      if (isset($input[$field])) {
+        $data[$field] = $input[$field];
+      }
+    }
+
+    if (empty($data)) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'No updatable fields provided.']));
+      return;
+    }
+
+    // 6. Update room
+    if ($this->Room_model->update_room($room_id, $data)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Room updated successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to update room.']));
+    }
+  }
+
+  public function delete_room()
+  {
+    // 1. Validate token
+    $payload = $this->_validate_token();
+    if (!$payload) {
+      return;
+    }
+
+    // 2. Get input and validate
+    $input = json_decode(file_get_contents('php://input'), true);
+    $room_id = isset($input['room_id']) ? $input['room_id'] : null;
+
+    if (!$room_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Room ID is required.']));
+      return;
+    }
+
+    // 3. Authorization Check
+    $room = $this->Room_model->get_room_by_id($room_id);
+    if (!$room) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Room not found.']));
+      return;
+    }
+
+    $subscription_key_data = $this->Key_model->get_keys_for_user($payload->data->userId);
+    $db_token = $subscription_key_data[0]['token'];
+    $db_payload = JWT::decode($db_token, new Key($this->config->item('jwt_key'), 'HS256'));
+    $subscribed_hotel_ids = isset($db_payload->data->hotelIds) ? (array) $db_payload->data->hotelIds : [];
+
+    if (!in_array($room['hotel_id'], $subscribed_hotel_ids)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to delete this room.']));
+      return;
+    }
+
+    // 4. Delete room
+    if ($this->Room_model->delete_room($room_id)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Room deleted successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete room.']));
+    }
+  }
+
+  public function create_guest()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $hotel_id = isset($input['hotel_id']) ? $input['hotel_id'] : null;
+
+    // Basic validation
+    if (!$hotel_id || empty($input['first_name']) || empty($input['email'])) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Hotel ID, First Name, and Email are required.']));
+      return;
+    }
+
+    // Authorization check
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $hotel_id)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to manage guests for this hotel.']));
+      return;
+    }
+
+    // Unique email check for the hotel
+    if (!$this->Guest_model->is_email_unique_for_hotel($hotel_id, $input['email'])) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'This email address is already registered for a guest at this hotel.']));
+      return;
+    }
+
+    $data = [
+      'hotel_id' => $hotel_id,
+      'first_name' => $input['first_name'],
+      'last_name' => isset($input['last_name']) ? $input['last_name'] : null,
+      'email' => $input['email'],
+      'phone' => isset($input['phone']) ? $input['phone'] : null,
+      'address' => isset($input['address']) ? $input['address'] : null,
+      'govt_id' => isset($input['govt_id_number']) ? $input['govt_id_number'] : null,
+    ];
+
+    $new_guest = $this->Guest_model->create_guest($data);
+    if ($new_guest) {
+      $this->output->set_status_header(201)->set_output(json_encode($new_guest));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to create guest.']));
+    }
+  }
+
+  public function get_guests_for_hotel($hotel_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $hotel_id)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view guests for this hotel.']));
+      return;
+    }
+
+    $guests = $this->Guest_model->get_guests_for_hotel($hotel_id);
+    $this->output->set_status_header(200)->set_output(json_encode($guests));
+  }
+
+  public function get_guest($guest_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $guest = $this->Guest_model->get_guest_by_id($guest_id);
+    if (!$guest) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Guest not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $guest['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view this guest.']));
+      return;
+    }
+
+    $this->output->set_status_header(200)->set_output(json_encode($guest));
+  }
+
+  public function update_guest()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $guest_id = isset($input['guest_id']) ? $input['guest_id'] : null;
+
+    if (!$guest_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Guest ID is required.']));
+      return;
+    }
+
+    $guest = $this->Guest_model->get_guest_by_id($guest_id);
+    if (!$guest) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Guest not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $guest['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to modify this guest.']));
+      return;
+    }
+
+    if (isset($input['email']) && $input['email'] !== $guest['email']) {
+      if (!$this->Guest_model->is_email_unique_for_hotel($guest['hotel_id'], $input['email'], $guest_id)) {
+        $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'This email address is already in use by another guest at this hotel.']));
+        return;
+      }
+    }
+
+    $data = [];
+    $fields = ['first_name', 'last_name', 'email', 'phone', 'address', 'govt_id'];
+    foreach ($fields as $field) {
+      if (isset($input[$field])) {
+        $data[$field] = $input[$field];
+      }
+    }
+
+    if ($this->Guest_model->update_guest($guest_id, $data)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Guest updated successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to update guest.']));
+    }
+  }
+
+  public function delete_guest()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $guest_id = isset($input['guest_id']) ? $input['guest_id'] : null;
+
+    if (!$guest_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Guest ID is required.']));
+      return;
+    }
+
+    $guest = $this->Guest_model->get_guest_by_id($guest_id);
+    if (!$guest) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Guest not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $guest['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to delete this guest.']));
+      return;
+    }
+
+    if ($this->Guest_model->delete_guest($guest_id)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Guest deleted successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete guest.']));
+    }
+  }
+
+  private function _is_user_subscribed_to_hotel($user_id, $hotel_id)
+  {
+    $subscription_key_data = $this->Key_model->get_keys_for_user($user_id);
+    if (empty($subscription_key_data)) {
+      return false;
+    }
+
+    try {
+      $db_token = $subscription_key_data[0]['token'];
+      $db_payload = JWT::decode($db_token, new Key($this->config->item('jwt_key'), 'HS256'));
+      $subscribed_hotel_ids = isset($db_payload->data->hotelIds) ? (array) $db_payload->data->hotelIds : [];
+      return in_array($hotel_id, $subscribed_hotel_ids);
+    } catch (Exception $e) {
+      return false;
+    }
+  }
+
+  public function create_booking()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    // Basic validation
+    $required_fields = ['hotel_id', 'guest_id', 'room_id', 'check_in_date', 'check_out_date', 'total_price'];
+    foreach ($required_fields as $field) {
+      if (empty($input[$field])) {
+        $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Missing required fields.']));
+        return;
+      }
+    }
+
+    // Authorization check
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $input['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to create bookings for this hotel.']));
+      return;
+    }
+
+    $data = [
+      'hotel_id' => $input['hotel_id'],
+      'guest_id' => $input['guest_id'],
+      'room_id' => $input['room_id'],
+      'check_in_date' => $input['check_in_date'],
+      'check_out_date' => $input['check_out_date'],
+      'total_price' => $input['total_price'],
+      'status' => isset($input['status']) ? $input['status'] : 'confirmed',
+    ];
+
+    $new_booking = $this->Booking_model->create_booking($data);
+    if ($new_booking) {
+      $this->output->set_status_header(201)->set_output(json_encode($new_booking));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to create booking.']));
+    }
+  }
+
+  public function get_bookings_for_hotel($hotel_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $hotel_id)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view bookings for this hotel.']));
+      return;
+    }
+
+    $bookings = $this->Booking_model->get_bookings_for_hotel($hotel_id);
+    $this->output->set_status_header(200)->set_output(json_encode($bookings));
+  }
+
+  public function get_booking($booking_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $booking = $this->Booking_model->get_booking_by_id($booking_id);
+    if (!$booking) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Booking not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view this booking.']));
+      return;
+    }
+
+    $this->output->set_status_header(200)->set_output(json_encode($booking));
+  }
+
+  public function update_booking()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $booking_id = isset($input['booking_id']) ? $input['booking_id'] : null;
+
+    if (!$booking_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Booking ID is required.']));
+      return;
+    }
+
+    $booking = $this->Booking_model->get_booking_by_id($booking_id);
+    if (!$booking) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Booking not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to modify this booking.']));
+      return;
+    }
+
+    $data = [];
+    $fields = ['check_in_date', 'check_out_date', 'status', 'total_price'];
+    foreach ($fields as $field) {
+      if (isset($input[$field])) {
+        $data[$field] = $input[$field];
+      }
+    }
+
+    if ($this->Booking_model->update_booking($booking_id, $data)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Booking updated successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to update booking.']));
+    }
+  }
+
+  public function delete_booking()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $booking_id = isset($input['booking_id']) ? $input['booking_id'] : null;
+
+    if (!$booking_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Booking ID is required.']));
+      return;
+    }
+
+    $booking = $this->Booking_model->get_booking_by_id($booking_id);
+    if (!$booking) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Booking not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to delete this booking.']));
+      return;
+    }
+
+    if ($this->Booking_model->delete_booking($booking_id)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Booking deleted successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete booking.']));
+    }
+  }
+
+  public function search_guests($hotel_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload) {
+      return;
+    }
+
+    $search_term = $this->input->get('q');
+    if (!$search_term) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'A search term is required. Use the "q" query parameter.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $hotel_id)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to search for guests in this hotel.']));
+      return;
+    }
+
+    $guests = $this->Guest_model->search_guests($hotel_id, $search_term);
+    $this->output->set_status_header(200)->set_output(json_encode($guests));
+  }
+
+  public function create_invoice()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    // Basic validation
+    if (empty($input['booking_id']) || !isset($input['total_amount']) || !isset($input['final_amount'])) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Booking ID, Total Amount, and Final Amount are required.']));
+      return;
+    }
+
+    // Authorization check
+    $booking = $this->Booking_model->get_booking_by_id($input['booking_id']);
+    if (!$booking) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Booking not found.']));
+      return;
+    }
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to create invoices for this hotel.']));
+      return;
+    }
+
+    $data = [
+      'booking_id' => $input['booking_id'],
+      'total_amount' => $input['total_amount'],
+      'discount' => isset($input['discount']) ? $input['discount'] : 0.00,
+      'final_amount' => $input['final_amount'],
+      'mode_of_payment' => isset($input['mode_of_payment']) ? $input['mode_of_payment'] : null,
+      'transaction_number' => isset($input['transaction_number']) ? $input['transaction_number'] : null,
+      'vat_percent' => isset($input['vat_percent']) ? $input['vat_percent'] : 0.00,
+      'vat_amount' => isset($input['vat_amount']) ? $input['vat_amount'] : 0.00,
+      'invoice_date' => date('Y-m-d H:i:s'),
+    ];
+
+    $new_invoice = $this->Invoice_model->create_invoice($data);
+    if ($new_invoice) {
+      $this->output->set_status_header(201)->set_output(json_encode($new_invoice));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to create invoice.']));
+    }
+  }
+
+  public function get_invoices($hotel_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $hotel_id)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view invoices for this hotel.']));
+      return;
+    }
+
+    $invoices = $this->Invoice_model->get_invoices_for_hotel($hotel_id);
+    $this->output->set_status_header(200)->set_output(json_encode($invoices));
+  }
+
+  public function get_invoice_by_booking($booking_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $booking = $this->Booking_model->get_booking_by_id($booking_id);
+    if (!$booking) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Booking not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view this invoice.']));
+      return;
+    }
+
+    $invoice = $this->Invoice_model->get_invoice_by_booking_id($booking_id);
+    if (!$invoice) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Invoice not found for this booking.']));
+      return;
+    }
+
+    $this->output->set_status_header(200)->set_output(json_encode($invoice));
+  }
+
+  public function update_invoice()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $invoice_id = isset($input['invoice_id']) ? $input['invoice_id'] : null;
+
+    if (!$invoice_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Invoice ID is required.']));
+      return;
+    }
+
+    $invoice = $this->Invoice_model->get_invoice_by_id($invoice_id);
+    if (!$invoice) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Invoice not found.']));
+      return;
+    }
+
+    $booking = $this->Booking_model->get_booking_by_id($invoice['booking_id']);
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to modify this invoice.']));
+      return;
+    }
+
+    $data = [];
+    $fields = ['total_amount', 'discount', 'final_amount', 'mode_of_payment', 'transaction_number', 'vat_percent', 'vat_amount'];
+    foreach ($fields as $field) {
+      if (isset($input[$field])) {
+        $data[$field] = $input[$field];
+      }
+    }
+
+    if ($this->Invoice_model->update_invoice($invoice_id, $data)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Invoice updated successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to update invoice.']));
+    }
+  }
+
+  public function delete_invoice()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $invoice_id = isset($input['invoice_id']) ? $input['invoice_id'] : null;
+
+    if (!$invoice_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Invoice ID is required.']));
+      return;
+    }
+
+    $invoice = $this->Invoice_model->get_invoice_by_id($invoice_id);
+    if (!$invoice) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Invoice not found.']));
+      return;
+    }
+
+    $booking = $this->Booking_model->get_booking_by_id($invoice['booking_id']);
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to delete this invoice.']));
+      return;
+    }
+
+    if ($this->Invoice_model->delete_invoice($invoice_id)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Invoice deleted successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete invoice.']));
     }
   }
 }

@@ -63,3 +63,31 @@ $route['api/room_types/(:num)'] = 'api/get_room_types/$1'; // GET
 $route['api/room_types/create'] = 'api/create_room_type'; // POST
 $route['api/room_types/update'] = 'api/update_room_type'; // POST
 $route['api/room_types/delete'] = 'api/delete_room_type'; // POST
+
+// API Routes for Rooms
+$route['api/rooms/create'] = 'api/create_room'; // POST
+$route['api/rooms/(:num)'] = 'api/get_rooms/$1'; // GET
+$route['api/rooms/update'] = 'api/update_room'; // POST
+$route['api/rooms/delete'] = 'api/delete_room'; // POST
+
+// API Routes for Guests
+$route['api/guests/create'] = 'api/create_guest'; // POST
+$route['api/guests/update'] = 'api/update_guest'; // POST
+$route['api/guests/delete'] = 'api/delete_guest'; // POST
+$route['api/guests/hotel/(:num)'] = 'api/get_guests_for_hotel/$1'; // GET
+$route['api/guests/(:num)'] = 'api/get_guest/$1'; // GET
+
+// API Routes for Bookings
+$route['api/bookings/create'] = 'api/create_booking'; // POST
+$route['api/bookings/update'] = 'api/update_booking'; // POST
+$route['api/bookings/delete'] = 'api/delete_booking'; // POST
+$route['api/bookings/hotel/(:num)'] = 'api/get_bookings_for_hotel/$1'; // GET
+$route['api/bookings/(:num)'] = 'api/get_booking/$1'; // GET
+
+// API Routes for Invoices
+$route['api/invoices/create'] = 'api/create_invoice'; // POST
+$route['api/invoices/update'] = 'api/update_invoice'; // POST
+$route['api/invoices/delete'] = 'api/delete_invoice'; // POST
+$route['api/invoices/hotel/(:num)'] = 'api/get_invoices/$1'; // GET
+$route['api/invoices/booking/(:num)'] = 'api/get_invoice_by_booking/$1'; // GET
+$route['api/guests/search/(:num)'] = 'api/search_guests/$1'; // GET with ?q=...

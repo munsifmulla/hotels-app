@@ -61,6 +61,36 @@ class Migration_Create_rooms_tables extends CI_Migration
         'type' => 'DECIMAL',
         'constraint' => '10,2',
       ),
+      'number_of_beds' => array(
+        'type' => 'INT',
+        'constraint' => 5,
+        'default' => 1,
+      ),
+      'number_of_bathrooms' => array(
+        'type' => 'INT',
+        'constraint' => 5,
+        'default' => 1,
+      ),
+      'has_tv' => array(
+        'type' => 'TINYINT',
+        'constraint' => 1,
+        'default' => 0,
+      ),
+      'has_kitchen' => array(
+        'type' => 'TINYINT',
+        'constraint' => 1,
+        'default' => 0,
+      ),
+      'has_fridge' => array(
+        'type' => 'TINYINT',
+        'constraint' => 1,
+        'default' => 0,
+      ),
+      'has_ac' => array(
+        'type' => 'TINYINT',
+        'constraint' => 1,
+        'default' => 0,
+      ),
     ));
     $this->dbforge->add_key('id', TRUE);
     $this->dbforge->create_table('rooms');
