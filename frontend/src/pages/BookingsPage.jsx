@@ -12,11 +12,13 @@ import {
 	Box,
 	Chip,
 	Button,
+	Modal,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import InvoiceModal from "../components/InvoiceModal";
+import ServicesManagementModal from "../components/ServicesManagementModal";
 
 const BookingsPage = () => {
 	const [bookings, setBookings] = useState([]);
@@ -24,6 +26,8 @@ const BookingsPage = () => {
 	const [rooms, setRooms] = useState([]);
 	const [selectedBooking, setSelectedBooking] = useState(null);
 	const [existingInvoice, setExistingInvoice] = useState(null);
+	const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+	const [isServicesModalOpen, setIsServicesModalOpen] = useState(false);
 	const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
@@ -70,20 +74,11 @@ const BookingsPage = () => {
 		return room ? room.room_number : "Unknown";
 	};
 
-	const handleCheckout = async (booking) => {
-		try {
-			// First, update the booking status
-			await updateBooking(booking.id, { status: "checked-out" });
-			// Then, open the invoice modal
-			setSelectedBooking(booking);
-			setExistingInvoice(null); // Ensure we are in generation mode
-			setIsInvoiceModalOpen(true);
-			// Refresh data in the background
-			fetchData();
-		} catch (err) {
-			// You might want to show a snackbar error here
-			console.error("Checkout failed:", err);
-		}
+	const handleCheckout = (booking) => {
+		// Just open the modal without updating the status first
+		setSelectedBooking(booking);
+		setExistingInvoice(null); // Ensure we are in generation mode
+		setIsInvoiceModalOpen(true);
 	};
 
 	const handleViewInvoice = async (booking) => {
@@ -94,8 +89,31 @@ const BookingsPage = () => {
 			setExistingInvoice(invoice); // This will be null if no invoice is found
 			setIsInvoiceModalOpen(true);
 		} catch (err) {
-			console.error("Failed to fetch invoice:", err);
+			console.error("Error fetching invoice:", err);
 			setError("Could not retrieve invoice information.");
+		}
+	};
+
+	const handleOpenServicesModal = (booking) => {
+		setSelectedBooking(booking);
+		setIsServicesModalOpen(true);
+	};
+
+	const handleOpenCancelModal = (booking) => {
+		setSelectedBooking(booking);
+		setIsCancelModalOpen(true);
+	};
+
+	const handleCancelBooking = async () => {
+		if (!selectedBooking) return;
+		try {
+			await updateBooking(selectedBooking.id, { status: "cancelled" });
+			setIsCancelModalOpen(false);
+			setSelectedBooking(null);
+			fetchData(); // Refresh the list
+		} catch (err) {
+			// You might want to show a snackbar error here
+			console.error("Cancellation failed:", err);
 		}
 	};
 
@@ -152,21 +170,41 @@ const BookingsPage = () => {
 										<Chip label={booking.status} size="small" />
 									</TableCell>
 									<TableCell align="right">
-										{booking.status === "checked-out" ? (
+										{booking.status === "confirmed" && (
+											<>
+												<Button
+													variant="outlined"
+													size="small"
+													onClick={() => handleOpenServicesModal(booking)}
+													sx={{ mr: 1 }}
+												>
+													Manage Services
+												</Button>
+												<Button
+													variant="outlined"
+													size="small"
+													onClick={() => handleCheckout(booking)}
+													sx={{ mr: 1 }}
+												>
+													{t("checkout_button")}
+												</Button>
+												<Button
+													variant="outlined"
+													color="error"
+													size="small"
+													onClick={() => handleOpenCancelModal(booking)}
+												>
+													{t("cancel_booking")}
+												</Button>
+											</>
+										)}
+										{booking.status === "checked-out" && (
 											<Button
 												variant="outlined"
 												size="small"
 												onClick={() => handleViewInvoice(booking)}
 											>
-												View Invoice
-											</Button>
-										) : (
-											<Button
-												variant="outlined"
-												size="small"
-												onClick={() => handleCheckout(booking)}
-											>
-												Checkout
+												{t("view_invoice")}
 											</Button>
 										)}
 									</TableCell>
@@ -184,11 +222,60 @@ const BookingsPage = () => {
 			{selectedBooking && (
 				<InvoiceModal
 					open={isInvoiceModalOpen}
-					onClose={() => setIsInvoiceModalOpen(false)}
+					onClose={() => {
+						setIsInvoiceModalOpen(false);
+						fetchData(); // Refresh data when modal closes
+					}}
 					booking={selectedBooking}
 					existingInvoice={existingInvoice}
 				/>
 			)}
+
+			{selectedBooking && (
+				<ServicesManagementModal
+					open={isServicesModalOpen}
+					onClose={() => setIsServicesModalOpen(false)}
+					booking={selectedBooking}
+					hotelId={hotelId}
+				/>
+			)}
+			<Modal
+				open={isCancelModalOpen}
+				onClose={() => setIsCancelModalOpen(false)}
+			>
+				<Box
+					sx={{
+						position: "absolute",
+						top: "50%",
+						left: "50%",
+						transform: "translate(-50%, -50%)",
+						width: 400,
+						bgcolor: "background.paper",
+						boxShadow: 24,
+						p: 4,
+						borderRadius: 2,
+					}}
+				>
+					<Typography variant="h6" component="h2">
+						{t("confirm_cancellation")}
+					</Typography>
+					<Typography sx={{ mt: 2 }}>
+						{t("cancel_confirmation_message")}
+					</Typography>
+					<Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
+						<Button onClick={() => setIsCancelModalOpen(false)} sx={{ mr: 1 }}>
+							{t("cancel")}
+						</Button>
+						<Button
+							onClick={handleCancelBooking}
+							variant="contained"
+							color="error"
+						>
+							{t("cancel_booking")}
+						</Button>
+					</Box>
+				</Box>
+			</Modal>
 		</Box>
 	);
 };

@@ -49,6 +49,7 @@ $(document).ready(function () {
 			var username = button.data("username");
 			var email = button.data("email");
 			var businessname = button.data("businessname");
+			var trnnumber = button.data("trnnumber");
 
 			var modal = $(this);
 			modal.find(".modal-title #edit-username-title").text(username);
@@ -56,6 +57,7 @@ $(document).ready(function () {
 			modal.find(".modal-body #edit-username").val(username);
 			modal.find(".modal-body #edit-email").val(email);
 			modal.find(".modal-body #edit-business-name").val(businessname);
+			modal.find(".modal-body #edit-trn-number").val(trnnumber);
 
 			// Reset any previous error messages
 			$("#edit-error").hide();
@@ -77,13 +79,15 @@ $(document).ready(function () {
 						);
 						row.find("td:nth-child(2)").text(response.user.username);
 						row.find("td:nth-child(3)").text(response.user.business_name);
+						row.find("td:nth-child(4)").text(response.user.trn_number);
 
 						// Update the data attributes on the edit button
 						row
 							.find(".btn-info")
 							.data("username", response.user.username)
 							.data("email", response.user.email)
-							.data("businessname", response.user.business_name);
+							.data("businessname", response.user.business_name)
+							.data("trnnumber", response.user.trn_number);
 
 						$("#editUserModal").modal("hide");
 					} else {

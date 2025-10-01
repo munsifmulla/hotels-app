@@ -25,6 +25,7 @@
           <th>#</th>
           <th>Username</th>
           <th>Business Name</th>
+          <th>TRN Number</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -36,11 +37,13 @@
               <td><?php echo $sn++; ?></td>
               <td><?php echo html_escape($user['username']); ?></td>
               <td><?php echo html_escape($user['business_name']); ?></td>
+              <td><?php echo html_escape($user['trn_number']); ?></td>
               <td class="d-flex">
                 <a href="#" class="btn btn-sm btn-info" data-toggle="modal" data-target="#editUserModal"
                   data-userid="<?php echo $user['id']; ?>" data-username="<?php echo html_escape($user['username']); ?>"
                   data-email="<?php echo html_escape($user['email']); ?>"
-                  data-businessname="<?php echo html_escape($user['business_name']); ?>" title="Edit User"><i
+                  data-businessname="<?php echo html_escape($user['business_name']); ?>"
+                  data-trnnumber="<?php echo html_escape($user['trn_number']); ?>" title="Edit User"><i
                     class="fa fa-edit"></i> User</a>
                 <button class="btn btn-sm btn-warning ml-1" type="button" title="Reset Password" data-toggle="modal"
                   data-target="#resetPasswordModal" data-userid="<?php echo $user['id']; ?>"
@@ -50,7 +53,8 @@
                 <a href="<?php echo site_url('users/manage_hotels/' . $user['id']); ?>" class="btn btn-sm btn-success ml-1"
                   title="Manage Hotels"><i class="fa fa-building"></i> Hotels
                 </a>
-                <a href="<?php echo site_url('users/manage_keys/' . $user['id']); ?>" class="btn btn-sm btn-dark ml-1" title="Manage API Keys">
+                <a href="<?php echo site_url('users/manage_keys/' . $user['id']); ?>" class="btn btn-sm btn-dark ml-1"
+                  title="Manage API Keys">
                   <i class="fa fa-key"></i> Manage Keys
                 </a>
                 <a href="#" class="btn btn-sm btn-danger ml-1" title="Delete User" data-toggle="modal"
@@ -61,7 +65,7 @@
           <?php endforeach; ?>
         <?php else: ?>
           <tr>
-            <td colspan="5" class="text-center">No users found.</td>
+            <td colspan="6" class="text-center">No users found.</td>
           </tr>
         <?php endif; ?>
       </tbody>
@@ -167,8 +171,12 @@
             <input type="text" name="email" id="edit-email" class="form-control">
           </div>
           <div class="form-group">
-            <label for="edit_business_name">Business Name (Optional)</label>
+            <label for="edit_business_name">Business Name</label>
             <input type="text" name="business_name" id="edit-business-name" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit_trn_number">TRN Number</label>
+            <input type="text" name="trn_number" id="edit-trn-number" class="form-control" required>
           </div>
         </div>
         <div class="modal-footer">

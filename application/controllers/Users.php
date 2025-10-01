@@ -50,7 +50,8 @@ class Users extends CI_Controller
     $this->form_validation->set_rules('username', 'Username', 'trim|required|is_unique[users.username]');
     $this->form_validation->set_rules('password', 'Password', 'required|min_length[8]');
     $this->form_validation->set_rules('email', 'Email', 'trim|valid_email|is_unique[users.email]');
-    $this->form_validation->set_rules('business_name', 'Business Name', 'trim');
+    $this->form_validation->set_rules('business_name', 'Business Name', 'trim|required');
+    $this->form_validation->set_rules('trn_number', 'TRN Number', 'trim|required');
 
     if ($this->form_validation->run() == FALSE) {
       // If validation fails, show the form again
@@ -69,6 +70,7 @@ class Users extends CI_Controller
         'username' => $this->input->post('username'),
         'email' => empty($email) ? NULL : $email,
         'business_name' => $this->input->post('business_name'),
+        'trn_number' => $this->input->post('trn_number'),
         'password' => $this->input->post('password'),
         'hotel_ids' => [] // No hotels selected from form anymore
       );
@@ -172,7 +174,8 @@ class Users extends CI_Controller
     // Set validation rules, ensuring uniqueness check ignores the current user
     $this->form_validation->set_rules('username', 'Username', 'trim|required|is_unique[users.username.id.' . $user_id . ']');
     $this->form_validation->set_rules('email', 'Email', 'trim|valid_email|is_unique[users.email.id.' . $user_id . ']');
-    $this->form_validation->set_rules('business_name', 'Business Name', 'trim');
+    $this->form_validation->set_rules('business_name', 'Business Name', 'trim|required');
+    $this->form_validation->set_rules('trn_number', 'TRN Number', 'trim|required');
 
     if ($this->form_validation->run() == FALSE) {
       $this->output
@@ -184,6 +187,7 @@ class Users extends CI_Controller
         'username' => $this->input->post('username'),
         'email' => empty($email) ? NULL : $email,
         'business_name' => $this->input->post('business_name'),
+        'trn_number' => $this->input->post('trn_number'),
       );
 
       if ($this->User_model->update_user($user_id, $data)) {
@@ -194,7 +198,8 @@ class Users extends CI_Controller
             'id' => $user_id,
             'username' => $data['username'],
             'email' => $data['email'],
-            'business_name' => $data['business_name']
+            'business_name' => $data['business_name'],
+            'trn_number' => $data['trn_number']
           ]
         ];
         $this->output->set_content_type('application/json')->set_output(json_encode($response));
@@ -351,6 +356,13 @@ class Users extends CI_Controller
     $end_date = $this->input->post('end_date');
     $hotel_ids = $this->input->post('hotel_ids');
 
+    // Fetch user details to include in the JWT
+    $user = $this->User_model->get_user_by_id($user_id);
+    if (!$user) {
+      $this->output->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'User not found.']));
+      return;
+    }
+
     // JWT Payload
     $payload = [
       'iss' => base_url(), // Issuer
@@ -360,7 +372,9 @@ class Users extends CI_Controller
       'exp' => strtotime($end_date), // Expiration
       'data' => [
         'userId' => $user_id,
-        'hotelIds' => array_map('intval', $hotel_ids)
+        'hotelIds' => array_map('intval', $hotel_ids),
+        'business_name' => $user['business_name'],
+        'trn_number' => $user['trn_number']
       ]
     ];
 

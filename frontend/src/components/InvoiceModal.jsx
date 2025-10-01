@@ -39,7 +39,7 @@ const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 	const [error, setError] = useState("");
 	const [generatedInvoice, setGeneratedInvoice] = useState(null);
 	const [guestDetails, setGuestDetails] = useState(null);
-	const { createInvoice, getGuest } = useAuth();
+	const { createInvoice, getGuest, updateBooking } = useAuth();
 
 	useEffect(() => {
 		// If an invoice is passed in, set it and skip calculations
@@ -88,6 +88,8 @@ const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 				transaction_number: transactionNumber,
 			};
 			const newInvoice = await createInvoice(invoiceData);
+			// After creating the invoice, update the booking status
+			await updateBooking(booking.id, { status: "checked-out" });
 			setGeneratedInvoice(newInvoice);
 		} catch (err) {
 			setError(err.message);
@@ -116,6 +118,7 @@ const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 						guest={guestDetails}
 						invoice={generatedInvoice}
 						booking={booking}
+						onClose={handleClose}
 					/>
 				) : (
 					<>

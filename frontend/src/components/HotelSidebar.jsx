@@ -13,6 +13,7 @@ import {
 	BookOnline as BookOnlineIcon,
 	People as PeopleIcon,
 	Category as CategoryIcon,
+	MiscellaneousServices as ServicesIcon,
 	ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 
@@ -109,6 +110,46 @@ const HotelSidebar = ({ t, i18n }) => {
 					<BookOnlineIcon />
 				</ListItemIcon>
 				<ListItemText primary={t("bookings")} />
+			</ListItem>
+			<ListItem
+				button
+				component={NavLink}
+				to={`/hotel/${hotelId}/services`}
+				sx={(theme) => ({
+					borderRadius: "8px",
+					"&.active": {
+						backgroundColor: theme.palette.primary.main,
+						color: theme.palette.primary.contrastText,
+						"& .MuiListItemIcon-root": {
+							color: theme.palette.primary.contrastText,
+						},
+					},
+				})}
+			>
+				<ListItemIcon>
+					<ServicesIcon />
+				</ListItemIcon>
+				<ListItemText primary={t("services")} />
+			</ListItem>
+			<ListItem
+				button
+				component={NavLink}
+				to={`/hotel/${hotelId}/service-types`}
+				sx={(theme) => ({
+					borderRadius: "8px",
+					"&.active": {
+						backgroundColor: theme.palette.primary.main,
+						color: theme.palette.primary.contrastText,
+						"& .MuiListItemIcon-root": {
+							color: theme.palette.primary.contrastText,
+						},
+					},
+				})}
+			>
+				<ListItemIcon>
+					<CategoryIcon />
+				</ListItemIcon>
+				<ListItemText primary={t("service_types")} />
 			</ListItem>
 		</List>
 	);

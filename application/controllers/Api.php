@@ -26,6 +26,8 @@ class Api extends CI_Controller
     $this->load->model('Guest_model');
     $this->load->model('Booking_model');
     $this->load->model('Invoice_model');
+    $this->load->model('Service_model');
+    $this->load->model('Service_type_model');
     $this->load->library('encryption');
     $this->output->set_content_type('application/json');
   }
@@ -1109,6 +1111,255 @@ class Api extends CI_Controller
       $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Invoice deleted successfully.']));
     } else {
       $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete invoice.']));
+    }
+  }
+
+  public function add_service()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    // Basic validation
+    if (empty($input['booking_id']) || empty($input['service_id'])) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Booking ID and Service ID are required.']));
+      return;
+    }
+
+    // Authorization check
+    $booking = $this->Booking_model->get_booking_by_id($input['booking_id']);
+    if (!$booking) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Booking not found.']));
+      return;
+    }
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to add services to this booking.']));
+      return;
+    }
+
+    $data = [
+      'hotel_id' => $booking['hotel_id'],
+      'booking_id' => $input['booking_id'],
+      'service_id' => $input['service_id'],
+    ];
+
+    $new_service = $this->Service_model->add_service($data);
+    if ($new_service) {
+      $this->output->set_status_header(201)->set_output(json_encode($new_service));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to add service.']));
+    }
+  }
+
+  public function remove_service()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $service_id = isset($input['service_id']) ? $input['service_id'] : null;
+
+    if (!$service_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Service ID is required.']));
+      return;
+    }
+
+    // Authorization check
+    $service = $this->Service_model->get_service_by_id($service_id);
+    if (!$service) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Service not found.']));
+      return;
+    }
+
+    $booking = $this->Booking_model->get_booking_by_id($service['booking_id']);
+    if (!$booking) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Associated booking not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to remove this service.']));
+      return;
+    }
+
+    if ($this->Service_model->delete_service($service_id)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Service removed successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to remove service.']));
+    }
+  }
+
+  public function get_services($hotel_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $hotel_id)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view services for this hotel.']));
+      return;
+    }
+
+    $services = $this->Service_model->get_services_for_hotel($hotel_id);
+    $this->output->set_status_header(200)->set_output(json_encode($services));
+  }
+
+  public function update_service()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $service_id = isset($input['service_id']) ? $input['service_id'] : null;
+
+    if (!$service_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Service ID is required.']));
+      return;
+    }
+
+    // Authorization check
+    $service = $this->Service_model->get_service_by_id($service_id);
+    if (!$service) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Service not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $service['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to modify this service.']));
+      return;
+    }
+
+    $data = [];
+    $fields = ['service', 'date', 'amount'];
+    foreach ($fields as $field) {
+      if (isset($input[$field])) {
+        $data[$field] = $input[$field];
+      }
+    }
+
+    if (empty($data)) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'No updatable fields provided.']));
+      return;
+    }
+
+    if ($this->Service_model->update_service($service_id, $data)) {
+      $updated_service = $this->Service_model->get_service_by_id($service_id);
+      $this->output->set_status_header(200)->set_output(json_encode([
+        'status' => 'success',
+        'message' => 'Service updated successfully.',
+        'service' => $updated_service
+      ]));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to update service.']));
+    }
+  }
+
+  public function get_service_types($hotel_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $hotel_id)) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view service types for this hotel.']));
+      return;
+    }
+
+    $service_types = $this->Service_type_model->get_service_types_for_hotel($hotel_id);
+    $this->output->set_status_header(200)->set_output(json_encode($service_types));
+  }
+
+  public function create_service_type()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (empty($input['hotel_id']) || empty($input['service']) || !isset($input['price'])) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Hotel ID, service name, and price are required.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $input['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to add service types to this hotel.']));
+      return;
+    }
+
+    $new_service_type = $this->Service_type_model->create_service_type($input);
+    if ($new_service_type) {
+      $this->output->set_status_header(201)->set_output(json_encode($new_service_type));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to create service type.']));
+    }
+  }
+
+  public function update_service_type()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $service_type_id = isset($input['service_type_id']) ? $input['service_type_id'] : null;
+
+    if (!$service_type_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Service Type ID is required.']));
+      return;
+    }
+
+    $service_type = $this->Service_type_model->get_service_type_by_id($service_type_id);
+    if (!$service_type) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Service type not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $service_type['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to modify this service type.']));
+      return;
+    }
+
+    $data = [];
+    if (isset($input['service']))
+      $data['service'] = $input['service'];
+    if (isset($input['price']))
+      $data['price'] = $input['price'];
+
+    if ($this->Service_type_model->update_service_type($service_type_id, $data)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Service type updated successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to update service type.']));
+    }
+  }
+
+  public function delete_service_type()
+  {
+    $payload = $this->_validate_token();
+    if (!$payload)
+      return;
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $service_type_id = isset($input['service_type_id']) ? $input['service_type_id'] : null;
+
+    if (!$service_type_id) {
+      $this->output->set_status_header(400)->set_output(json_encode(['status' => 'error', 'message' => 'Service Type ID is required.']));
+      return;
+    }
+
+    $service_type = $this->Service_type_model->get_service_type_by_id($service_type_id);
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $service_type['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to delete this service type.']));
+      return;
+    }
+
+    if ($this->Service_type_model->delete_service_type($service_type_id)) {
+      $this->output->set_status_header(200)->set_output(json_encode(['status' => 'success', 'message' => 'Service type deleted successfully.']));
+    } else {
+      $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete service type. It might be in use.']));
     }
   }
 }

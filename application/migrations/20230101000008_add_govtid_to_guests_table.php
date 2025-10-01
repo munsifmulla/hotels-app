@@ -8,7 +8,7 @@ class Migration_Add_govtid_to_guests_table extends CI_Migration
   public function up()
   {
     $fields = array(
-      'govt_id_number' => array(
+      'govt_id' => array(
         'type' => 'VARCHAR',
         'constraint' => '100',
         'null' => TRUE,

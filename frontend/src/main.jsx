@@ -14,6 +14,8 @@ import HotelDashboardPage from "./pages/HotelDashboardPage.jsx";
 import RoomsPage from "./pages/RoomsPage.jsx";
 import RoomTypesPage from "./pages/RoomTypesPage.jsx";
 import BookingsPage from "./pages/BookingsPage.jsx";
+import ServicesPage from "./pages/ServicesPage.jsx";
+import ServiceTypesPage from "./pages/ServiceTypesPage.jsx";
 import App from "./App.jsx";
 
 const router = createHashRouter([
@@ -52,6 +54,8 @@ const router = createHashRouter([
 							{ path: "rooms", element: <RoomsPage /> },
 							{ path: "room-types", element: <RoomTypesPage /> },
 							{ path: "bookings", element: <BookingsPage /> },
+							{ path: "services", element: <ServicesPage /> },
+							{ path: "service-types", element: <ServiceTypesPage /> },
 						],
 					},
 				],
