@@ -89,12 +89,22 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 		setLoading(true);
 		setError("");
 		try {
+			// Format dates to 'YYYY-MM-DD' to avoid timezone issues.
+			const formatDate = (date) => {
+				if (!date) return null;
+				const d = new Date(date);
+				const year = d.getFullYear();
+				const month = (d.getMonth() + 1).toString().padStart(2, "0");
+				const day = d.getDate().toString().padStart(2, "0");
+				return `${year}-${month}-${day}`;
+			};
+
 			const bookingData = {
 				hotel_id: hotelId,
 				guest_id: guest.id,
 				room_id: room.id,
-				check_in_date: checkIn,
-				check_out_date: checkOut,
+				check_in_date: formatDate(checkIn),
+				check_out_date: formatDate(checkOut),
 				total_price: totalPrice,
 			};
 			await createBooking(bookingData);

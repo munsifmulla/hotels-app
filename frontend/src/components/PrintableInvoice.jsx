@@ -18,6 +18,7 @@ import { QRCodeSVG as QRCode } from "qrcode.react";
 import { useReactToPrint } from "react-to-print";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
+import i18n from "../i18n";
 
 const PrintableInvoice = ({ invoice, booking, guest, services, onClose }) => {
 	const { t } = useTranslation();
@@ -25,6 +26,9 @@ const PrintableInvoice = ({ invoice, booking, guest, services, onClose }) => {
 	const { tokenPayload } = useAuth();
 	const handlePrint = useReactToPrint({
 		contentRef: componentRef,
+		pageStyle: `
+      @page { margin: 1.5cm; }
+    `,
 	});
 	if (!invoice || !booking || !guest || !services) return null;
 
@@ -71,7 +75,11 @@ const PrintableInvoice = ({ invoice, booking, guest, services, onClose }) => {
 
 	return (
 		<Box>
-			<Box ref={componentRef} sx={{ p: 1, border: "1px solid #ccc", my: 2 }}>
+			<Box
+				ref={componentRef}
+				sx={{ p: 1, border: "1px solid #ccc", my: 2 }}
+				dir={i18n.language === "ar" ? "rtl" : "ltr"}
+			>
 				<Typography
 					variant="h6"
 					align="center"

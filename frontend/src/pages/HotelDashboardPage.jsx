@@ -61,12 +61,15 @@ const HotelDashboardPage = () => {
 					}`;
 
 					// Adjust end date to be inclusive for display
-					const endDate = new Date(booking.check_out_date);
+					// The calendar's `end` is exclusive for all-day events.
+					// We need to add 1 day to the checkout date to make it inclusive.
+					const checkOutDate = new Date(booking.check_out_date);
+					checkOutDate.setUTCDate(checkOutDate.getUTCDate() + 1);
 
 					return {
 						title,
 						start: new Date(booking.check_in_date),
-						end: endDate,
+						end: checkOutDate,
 						allDay: true,
 						resource: booking, // Keep original booking data
 					};
