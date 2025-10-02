@@ -932,6 +932,30 @@ class Api extends CI_Controller
     }
   }
 
+  public function get_bookings_for_room($room_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload) {
+      return;
+    }
+
+    // Authorization check: Ensure user is subscribed to the hotel this room belongs to.
+    $room = $this->Room_model->get_room_by_id($room_id);
+    if (!$room) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Room not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $room['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view bookings for this room.']));
+      return;
+    }
+
+    // Fetch and return bookings for the specific room
+    $bookings = $this->Booking_model->get_bookings_for_room($room_id);
+    $this->output->set_status_header(200)->set_output(json_encode($bookings));
+  }
+
   public function search_guests($hotel_id)
   {
     $payload = $this->_validate_token();
@@ -979,11 +1003,32 @@ class Api extends CI_Controller
       return;
     }
 
+    // --- Generate Invoice Number ---
+    $business_name = $payload->data->business_name;
+    $words = explode(' ', $business_name);
+    $prefix = '';
+    foreach ($words as $word) {
+      $prefix .= strtoupper(substr($word, 0, 1));
+    }
+
+    $last_invoice = $this->Invoice_model->get_last_invoice_for_user($prefix, $payload->data->userId);
+    $next_number = 1;
+    if ($last_invoice && !empty($last_invoice['invoice_number'])) {
+      $parts = explode('-', $last_invoice['invoice_number']);
+      if (count($parts) > 1) {
+        $last_number = (int) end($parts);
+        $next_number = $last_number + 1;
+      }
+    }
+    $invoice_number = $prefix . '-' . str_pad($next_number, 5, '0', STR_PAD_LEFT);
+    // --- End Generate Invoice Number ---
+
     $data = [
       'booking_id' => $input['booking_id'],
       'total_amount' => $input['total_amount'],
       'discount' => isset($input['discount']) ? $input['discount'] : 0.00,
       'final_amount' => $input['final_amount'],
+      'invoice_number' => $invoice_number,
       'mode_of_payment' => isset($input['mode_of_payment']) ? $input['mode_of_payment'] : null,
       'transaction_number' => isset($input['transaction_number']) ? $input['transaction_number'] : null,
       'vat_percent' => isset($input['vat_percent']) ? $input['vat_percent'] : 0.00,
@@ -1361,5 +1406,29 @@ class Api extends CI_Controller
     } else {
       $this->output->set_status_header(500)->set_output(json_encode(['status' => 'error', 'message' => 'Failed to delete service type. It might be in use.']));
     }
+  }
+
+  public function get_services_for_booking($booking_id)
+  {
+    $payload = $this->_validate_token();
+    if (!$payload) {
+      return;
+    }
+
+    // Authorization check
+    $booking = $this->Booking_model->get_booking_by_id($booking_id);
+    if (!$booking) {
+      $this->output->set_status_header(404)->set_output(json_encode(['status' => 'error', 'message' => 'Booking not found.']));
+      return;
+    }
+
+    if (!$this->_is_user_subscribed_to_hotel($payload->data->userId, $booking['hotel_id'])) {
+      $this->output->set_status_header(403)->set_output(json_encode(['status' => 'error', 'message' => 'You are not authorized to view services for this booking.']));
+      return;
+    }
+
+    // Fetch and return services for the specific booking
+    $services = $this->Service_model->get_services_for_booking($booking_id);
+    $this->output->set_status_header(200)->set_output(json_encode($services));
   }
 }

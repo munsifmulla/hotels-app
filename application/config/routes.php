@@ -96,6 +96,7 @@ $route['api/invoices/booking/(:num)'] = 'api/get_invoice_by_booking/$1'; // GET
 $route['api/services/add'] = 'api/add_service'; // POST
 $route['api/services/remove'] = 'api/remove_service'; // POST
 $route['api/services/hotel/(:num)'] = 'api/get_services/$1'; // GET
+$route['api/services/booking/(:num)'] = 'api/get_services_for_booking/$1'; // GET
 $route['api/guests/search/(:num)'] = 'api/search_guests/$1'; // GET with ?q=...
 
 // API Routes for Service Types

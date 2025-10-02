@@ -49,7 +49,10 @@ $(document).ready(function () {
 			var username = button.data("username");
 			var email = button.data("email");
 			var businessname = button.data("businessname");
+			var businessnamelang = button.data("businessnamelang");
 			var trnnumber = button.data("trnnumber");
+			var businessaddress = button.data("businessaddress");
+			var phonenumber = button.data("phonenumber");
 
 			var modal = $(this);
 			modal.find(".modal-title #edit-username-title").text(username);
@@ -57,7 +60,10 @@ $(document).ready(function () {
 			modal.find(".modal-body #edit-username").val(username);
 			modal.find(".modal-body #edit-email").val(email);
 			modal.find(".modal-body #edit-business-name").val(businessname);
+			modal.find(".modal-body #edit-business-name-lang").val(businessnamelang);
 			modal.find(".modal-body #edit-trn-number").val(trnnumber);
+			modal.find(".modal-body #edit-business-address").val(businessaddress);
+			modal.find(".modal-body #edit-phone-number").val(phonenumber);
 
 			// Reset any previous error messages
 			$("#edit-error").hide();
@@ -87,7 +93,10 @@ $(document).ready(function () {
 							.data("username", response.user.username)
 							.data("email", response.user.email)
 							.data("businessname", response.user.business_name)
-							.data("trnnumber", response.user.trn_number);
+							.data("businessnamelang", response.user.business_name_lang)
+							.data("trnnumber", response.user.trn_number)
+							.data("businessaddress", response.user.business_address)
+							.data("phonenumber", response.user.phone_number);
 
 						$("#editUserModal").modal("hide");
 					} else {

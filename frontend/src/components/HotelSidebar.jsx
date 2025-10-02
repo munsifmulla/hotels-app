@@ -24,9 +24,14 @@ const HotelSidebar = ({ t, i18n }) => {
 
 	const drawerContent = (
 		<List sx={{ p: 1 }}>
-			<ListItem button component={NavLink} to="/">
+			<ListItem
+				button
+				component={NavLink}
+				to="/"
+				sx={{ color: "primary.main", borderRadius: "8px" }}
+			>
 				<ListItemIcon>
-					<ArrowBackIcon />
+					<ArrowBackIcon color="primary" />
 				</ListItemIcon>
 				<ListItemText primary={t("main_dashboard")} />
 			</ListItem>
@@ -37,6 +42,10 @@ const HotelSidebar = ({ t, i18n }) => {
 				end
 				sx={(theme) => ({
 					borderRadius: "8px",
+					color: "text.secondary",
+					"& .MuiListItemIcon-root": {
+						color: "text.secondary",
+					},
 					"&.active": {
 						backgroundColor: theme.palette.primary.main,
 						color: theme.palette.primary.contrastText,
@@ -57,6 +66,10 @@ const HotelSidebar = ({ t, i18n }) => {
 				to={`/hotel/${hotelId}/rooms`}
 				sx={(theme) => ({
 					borderRadius: "8px",
+					color: "text.secondary",
+					"& .MuiListItemIcon-root": {
+						color: "text.secondary",
+					},
 					"&.active": {
 						backgroundColor: theme.palette.primary.main,
 						color: theme.palette.primary.contrastText,
@@ -74,29 +87,13 @@ const HotelSidebar = ({ t, i18n }) => {
 			<ListItem
 				button
 				component={NavLink}
-				to={`/hotel/${hotelId}/room-types`}
-				sx={(theme) => ({
-					borderRadius: "8px",
-					"&.active": {
-						backgroundColor: theme.palette.primary.main,
-						color: theme.palette.primary.contrastText,
-						"& .MuiListItemIcon-root": {
-							color: theme.palette.primary.contrastText,
-						},
-					},
-				})}
-			>
-				<ListItemIcon>
-					<CategoryIcon />
-				</ListItemIcon>
-				<ListItemText primary={t("room_types")} />
-			</ListItem>
-			<ListItem
-				button
-				component={NavLink}
 				to={`/hotel/${hotelId}/bookings`}
 				sx={(theme) => ({
 					borderRadius: "8px",
+					color: "text.secondary",
+					"& .MuiListItemIcon-root": {
+						color: "text.secondary",
+					},
 					"&.active": {
 						backgroundColor: theme.palette.primary.main,
 						color: theme.palette.primary.contrastText,
@@ -114,9 +111,13 @@ const HotelSidebar = ({ t, i18n }) => {
 			<ListItem
 				button
 				component={NavLink}
-				to={`/hotel/${hotelId}/services`}
+				to={`/hotel/${hotelId}/room-types`}
 				sx={(theme) => ({
 					borderRadius: "8px",
+					color: "text.secondary",
+					"& .MuiListItemIcon-root": {
+						color: "text.secondary",
+					},
 					"&.active": {
 						backgroundColor: theme.palette.primary.main,
 						color: theme.palette.primary.contrastText,
@@ -127,9 +128,9 @@ const HotelSidebar = ({ t, i18n }) => {
 				})}
 			>
 				<ListItemIcon>
-					<ServicesIcon />
+					<CategoryIcon />
 				</ListItemIcon>
-				<ListItemText primary={t("services")} />
+				<ListItemText primary={t("room_types")} />
 			</ListItem>
 			<ListItem
 				button
@@ -137,6 +138,10 @@ const HotelSidebar = ({ t, i18n }) => {
 				to={`/hotel/${hotelId}/service-types`}
 				sx={(theme) => ({
 					borderRadius: "8px",
+					color: "text.secondary",
+					"& .MuiListItemIcon-root": {
+						color: "text.secondary",
+					},
 					"&.active": {
 						backgroundColor: theme.palette.primary.main,
 						color: theme.palette.primary.contrastText,

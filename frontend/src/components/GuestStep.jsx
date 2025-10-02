@@ -11,6 +11,7 @@ import {
 	Divider,
 } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const GuestStep = ({ onNext, hotelId }) => {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -26,6 +27,7 @@ const GuestStep = ({ onNext, hotelId }) => {
 		govt_id_number: "",
 	});
 	const { searchGuests, createGuest } = useAuth();
+	const { t } = useTranslation();
 
 	const handleSearch = useCallback(async () => {
 		if (!searchTerm.trim()) return;
@@ -71,17 +73,17 @@ const GuestStep = ({ onNext, hotelId }) => {
 	return (
 		<Box>
 			<Typography variant="h6" gutterBottom>
-				Find or Add Guest
+				{t("find_or_add_guest")}
 			</Typography>
 			<Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
 				<TextField
 					fullWidth
-					label="Search by Phone or Government ID"
+					label={t("search_by_phone_or_govt_id")}
 					value={searchTerm}
 					onChange={(e) => setSearchTerm(e.target.value)}
 				/>
 				<Button onClick={handleSearch} variant="contained" sx={{ ml: 2 }}>
-					Search
+					{t("search")}
 				</Button>
 			</Box>
 
@@ -104,21 +106,21 @@ const GuestStep = ({ onNext, hotelId }) => {
 			{showAddForm && (
 				<Box component="form" onSubmit={handleAddNewGuest}>
 					<Divider sx={{ my: 2 }}>
-						<Typography>Or Add New Guest</Typography>
+						<Typography>{t("or_add_new_guest")}</Typography>
 					</Divider>
 					<TextField
 						margin="normal"
 						required
 						fullWidth
 						name="first_name"
-						label="First Name"
+						label={t("first_name")}
 						onChange={handleNewGuestChange}
 					/>
 					<TextField
 						margin="normal"
 						fullWidth
 						name="last_name"
-						label="Last Name"
+						label={t("last_name")}
 						onChange={handleNewGuestChange}
 					/>
 					<TextField
@@ -126,7 +128,7 @@ const GuestStep = ({ onNext, hotelId }) => {
 						required
 						fullWidth
 						name="email"
-						label="Email"
+						label={t("email")}
 						type="email"
 						onChange={handleNewGuestChange}
 					/>
@@ -134,14 +136,14 @@ const GuestStep = ({ onNext, hotelId }) => {
 						margin="normal"
 						fullWidth
 						name="phone"
-						label="Phone Number"
+						label={t("phone_number")}
 						onChange={handleNewGuestChange}
 					/>
 					<TextField
 						margin="normal"
 						fullWidth
 						name="govt_id_number"
-						label="Government ID"
+						label={t("government_id")}
 						onChange={handleNewGuestChange}
 					/>
 					<Button
@@ -151,7 +153,7 @@ const GuestStep = ({ onNext, hotelId }) => {
 						sx={{ mt: 2 }}
 						disabled={loading}
 					>
-						Add Guest & Continue
+						{t("add_guest_and_continue")}
 					</Button>
 				</Box>
 			)}

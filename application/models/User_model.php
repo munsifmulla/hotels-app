@@ -22,7 +22,7 @@ class User_model extends CI_Model
 
   public function get_users($search = NULL)
   {
-    $this->db->select('id, username, email, business_name, trn_number');
+    $this->db->select('id, username, email, business_name, business_name_lang, trn_number, business_address, phone_number');
     if ($search) {
       $this->db->group_start();
       $this->db->like('username', $search);
@@ -96,7 +96,10 @@ class User_model extends CI_Model
       'email' => $data['email'],
       'password' => password_hash($data['password'], PASSWORD_DEFAULT),
       'business_name' => $data['business_name'],
-      'trn_number' => $data['trn_number']
+      'business_name_lang' => isset($data['business_name_lang']) ? $data['business_name_lang'] : null,
+      'trn_number' => $data['trn_number'],
+      'business_address' => isset($data['business_address']) ? $data['business_address'] : null,
+      'phone_number' => isset($data['phone_number']) ? $data['phone_number'] : null
     );
     $this->db->insert('users', $user_data);
     $user_id = $data['id']; // Use the ID we generated in the controller

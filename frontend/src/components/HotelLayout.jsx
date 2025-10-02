@@ -47,10 +47,15 @@ const HotelLayout = () => {
 							variant="h6"
 							noWrap
 							component="div"
-							sx={{ flexGrow: 1 }}
+							sx={{
+								flexGrow: 1,
+								fontWeight: 400,
+								color: "white",
+								letterSpacing: ".1rem",
+								fontSize: { xs: "1.8rem", sm: "1.5rem" },
+							}}
 						>
-							{/* We can make this dynamic later */}
-							Hotel Dashboard
+							<span style={{ fontWeight: 700 }}>Emax</span> hotels
 						</Typography>
 						<FormControlLabel
 							sx={{ color: "white" }}

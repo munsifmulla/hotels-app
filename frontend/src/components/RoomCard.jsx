@@ -82,11 +82,6 @@ const RoomCard = ({ room, roomType, t, onEdit, onDelete, onBook }) => {
 						>
 							<DeleteIcon fontSize="small" />
 						</IconButton>
-						<Chip
-							label={room.status}
-							color={statusColors[room.status] || "default"}
-							size="small"
-						/>
 					</Box>
 				</Box>
 				{roomType && (

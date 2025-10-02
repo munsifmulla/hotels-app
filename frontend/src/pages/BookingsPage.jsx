@@ -13,6 +13,8 @@ import {
 	Chip,
 	Button,
 	Modal,
+	TextField,
+	TablePagination,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -24,11 +26,16 @@ const BookingsPage = () => {
 	const [bookings, setBookings] = useState([]);
 	const [guests, setGuests] = useState([]);
 	const [rooms, setRooms] = useState([]);
+	const [services, setServices] = useState([]);
+	const [serviceTypes, setServiceTypes] = useState([]);
 	const [selectedBooking, setSelectedBooking] = useState(null);
 	const [existingInvoice, setExistingInvoice] = useState(null);
 	const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 	const [isServicesModalOpen, setIsServicesModalOpen] = useState(false);
 	const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+	const [page, setPage] = useState(0);
+	const [rowsPerPage, setRowsPerPage] = useState(10);
+	const [filter, setFilter] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
 	const {
@@ -37,6 +44,8 @@ const BookingsPage = () => {
 		getRooms,
 		updateBooking,
 		getInvoiceByBookingId,
+		getServices,
+		getServiceTypes,
 	} = useAuth();
 	const { hotelId } = useParams();
 	const { t } = useTranslation();
@@ -45,20 +54,42 @@ const BookingsPage = () => {
 		try {
 			setLoading(true);
 			setError("");
-			const [bookingsData, guestsData, roomsData] = await Promise.all([
+			const [
+				bookingsData,
+				guestsData,
+				roomsData,
+				servicesData,
+				serviceTypesData,
+			] = await Promise.all([
 				getBookings(hotelId),
 				getGuests(hotelId),
 				getRooms(hotelId),
+				getServices(hotelId),
+				getServiceTypes(hotelId),
 			]);
-			setBookings(bookingsData);
+
+			const statusOrder = {
+				confirmed: 1,
+				"checked-in": 2, // Assuming checked-in comes after confirmed
+				"checked-out": 3,
+				cancelled: 4,
+			};
+
+			const sortedBookings = bookingsData.sort(
+				(a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99)
+			);
+
+			setBookings(sortedBookings);
 			setGuests(guestsData);
 			setRooms(roomsData);
+			setServices(servicesData);
+			setServiceTypes(serviceTypesData);
 		} catch (err) {
 			setError(err.message);
 		} finally {
 			setLoading(false);
 		}
-	}, [getBookings, getGuests, getRooms, hotelId]);
+	}, [getBookings, getGuests, getRooms, getServices, getServiceTypes, hotelId]);
 
 	useEffect(() => {
 		fetchData();
@@ -72,6 +103,17 @@ const BookingsPage = () => {
 	const getRoomNumber = (roomId) => {
 		const room = rooms.find((r) => r.id === roomId);
 		return room ? room.room_number : "Unknown";
+	};
+
+	const getServicesTotalForBooking = (bookingId) => {
+		const bookingServices = services.filter((s) => s.booking_id === bookingId);
+		const serviceTypeMap = new Map(serviceTypes.map((st) => [st.id, st]));
+
+		return bookingServices.reduce((total, service) => {
+			const serviceType = serviceTypeMap.get(service.service_id);
+			const price = serviceType ? parseFloat(serviceType.price) : 0;
+			return total + price;
+		}, 0);
 	};
 
 	const handleCheckout = (booking) => {
@@ -117,6 +159,15 @@ const BookingsPage = () => {
 		}
 	};
 
+	const handleChangePage = (event, newPage) => {
+		setPage(newPage);
+	};
+
+	const handleChangeRowsPerPage = (event) => {
+		setRowsPerPage(parseInt(event.target.value, 10));
+		setPage(0);
+	};
+
 	if (loading) {
 		return (
 			<Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -133,12 +184,43 @@ const BookingsPage = () => {
 		);
 	}
 
+	const filteredBookings = bookings.filter((booking) => {
+		if (!filter) return true;
+		const lowercasedFilter = filter.toLowerCase();
+		const guest = guests.find((g) => g.id === booking.guest_id);
+		const room = rooms.find((r) => r.id === booking.room_id);
+
+		return (
+			booking.id.toString().includes(lowercasedFilter) ||
+			(room && room.room_number.toLowerCase().includes(lowercasedFilter)) ||
+			(guest &&
+				`${guest.first_name} ${guest.last_name}`
+					.toLowerCase()
+					.includes(lowercasedFilter)) ||
+			new Date(booking.check_in_date)
+				.toLocaleDateString()
+				.includes(lowercasedFilter) ||
+			new Date(booking.check_out_date)
+				.toLocaleDateString()
+				.includes(lowercasedFilter)
+		);
+	});
+
 	return (
 		<Box>
-			<Typography variant="h4" gutterBottom>
-				{t("bookings")}
-			</Typography>
-			{bookings.length > 0 ? (
+			<Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+				<Typography variant="h4" gutterBottom>
+					{t("bookings")}
+				</Typography>
+				<TextField
+					label={t("search")}
+					variant="outlined"
+					size="small"
+					value={filter}
+					onChange={(e) => setFilter(e.target.value)}
+				/>
+			</Box>
+			{filteredBookings.length > 0 ? (
 				<TableContainer component={Paper}>
 					<Table>
 						<TableHead>
@@ -148,70 +230,86 @@ const BookingsPage = () => {
 								<TableCell>{t("check_in")}</TableCell>
 								<TableCell>{t("check_out")}</TableCell>
 								<TableCell align="right">{t("price")}</TableCell>
+								<TableCell align="right">{t("services")}</TableCell>
 								<TableCell>{t("status")}</TableCell>
 								<TableCell align="right">{t("actions")}</TableCell>
 							</TableRow>
 						</TableHead>
 						<TableBody>
-							{bookings.map((booking) => (
-								<TableRow key={booking.id}>
-									<TableCell>{getGuestName(booking.guest_id)}</TableCell>
-									<TableCell>{getRoomNumber(booking.room_id)}</TableCell>
-									<TableCell>
-										{new Date(booking.check_in_date).toLocaleDateString()}
-									</TableCell>
-									<TableCell>
-										{new Date(booking.check_out_date).toLocaleDateString()}
-									</TableCell>
-									<TableCell align="right">
-										{t("currency")} {booking.total_price}
-									</TableCell>
-									<TableCell>
-										<Chip label={booking.status} size="small" />
-									</TableCell>
-									<TableCell align="right">
-										{booking.status === "confirmed" && (
-											<>
+							{filteredBookings
+								.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+								.map((booking) => (
+									<TableRow key={booking.id}>
+										<TableCell>{getGuestName(booking.guest_id)}</TableCell>
+										<TableCell>{getRoomNumber(booking.room_id)}</TableCell>
+										<TableCell>
+											{new Date(booking.check_in_date).toLocaleDateString()}
+										</TableCell>
+										<TableCell>
+											{new Date(booking.check_out_date).toLocaleDateString()}
+										</TableCell>
+										<TableCell align="right">
+											{t("currency")} {booking.total_price}
+										</TableCell>
+										<TableCell align="right">
+											{t("currency")}{" "}
+											{getServicesTotalForBooking(booking.id).toFixed(2)}
+										</TableCell>
+										<TableCell>
+											<Chip label={booking.status} size="small" />
+										</TableCell>
+										<TableCell align="right">
+											{booking.status === "confirmed" && (
+												<>
+													<Button
+														variant="outlined"
+														size="small"
+														onClick={() => handleOpenServicesModal(booking)}
+														sx={{ mr: 1 }}
+													>
+														{t("manage_services")}
+													</Button>
+													<Button
+														variant="outlined"
+														size="small"
+														onClick={() => handleCheckout(booking)}
+														sx={{ mr: 1 }}
+													>
+														{t("checkout_button")}
+													</Button>
+													<Button
+														variant="outlined"
+														color="error"
+														size="small"
+														onClick={() => handleOpenCancelModal(booking)}
+													>
+														{t("cancel_booking")}
+													</Button>
+												</>
+											)}
+											{booking.status === "checked-out" && (
 												<Button
 													variant="outlined"
 													size="small"
-													onClick={() => handleOpenServicesModal(booking)}
-													sx={{ mr: 1 }}
+													onClick={() => handleViewInvoice(booking)}
 												>
-													Manage Services
+													{t("view_invoice")}
 												</Button>
-												<Button
-													variant="outlined"
-													size="small"
-													onClick={() => handleCheckout(booking)}
-													sx={{ mr: 1 }}
-												>
-													{t("checkout_button")}
-												</Button>
-												<Button
-													variant="outlined"
-													color="error"
-													size="small"
-													onClick={() => handleOpenCancelModal(booking)}
-												>
-													{t("cancel_booking")}
-												</Button>
-											</>
-										)}
-										{booking.status === "checked-out" && (
-											<Button
-												variant="outlined"
-												size="small"
-												onClick={() => handleViewInvoice(booking)}
-											>
-												{t("view_invoice")}
-											</Button>
-										)}
-									</TableCell>
-								</TableRow>
-							))}
+											)}
+										</TableCell>
+									</TableRow>
+								))}
 						</TableBody>
 					</Table>
+					<TablePagination
+						rowsPerPageOptions={[5, 10, 25]}
+						component="div"
+						count={filteredBookings.length}
+						rowsPerPage={rowsPerPage}
+						page={page}
+						onPageChange={handleChangePage}
+						onRowsPerPageChange={handleChangeRowsPerPage}
+					/>
 				</TableContainer>
 			) : (
 				<Typography sx={{ mt: 4, textAlign: "center" }}>
@@ -234,7 +332,10 @@ const BookingsPage = () => {
 			{selectedBooking && (
 				<ServicesManagementModal
 					open={isServicesModalOpen}
-					onClose={() => setIsServicesModalOpen(false)}
+					onClose={() => {
+						setIsServicesModalOpen(false);
+						fetchData(); // Refresh data to show updated service totals
+					}}
 					booking={selectedBooking}
 					hotelId={hotelId}
 				/>

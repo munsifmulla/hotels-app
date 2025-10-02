@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Modal, Box, Stepper, Step, StepLabel } from "@mui/material";
 import GuestStep from "./GuestStep";
 import BookingStep from "./BookingStep";
+import { useTranslation } from "react-i18next";
 
 const modalStyle = {
 	position: "absolute",
@@ -15,11 +16,12 @@ const modalStyle = {
 	borderRadius: 2,
 };
 
-const steps = ["Select Guest", "Confirm Booking"];
-
 const BookingModal = ({ open, onClose, room, hotelId }) => {
+	const { t } = useTranslation();
 	const [activeStep, setActiveStep] = useState(0);
 	const [selectedGuest, setSelectedGuest] = useState(null);
+
+	const steps = [t("select_guest"), t("confirm_booking")];
 
 	const handleNext = (guest) => {
 		setSelectedGuest(guest);

@@ -5,7 +5,7 @@ export const getTheme = (direction) =>
 		direction: direction,
 		palette: {
 			primary: {
-				main: "#d26060ff", // A shade of blue
+				main: "#4d8db0ff", // A shade of blue
 			},
 			secondary: {
 				main: "#dc004e", // An action color

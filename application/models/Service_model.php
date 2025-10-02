@@ -41,4 +41,9 @@ class Service_model extends CI_Model
     $this->db->update('services', $data);
     return $this->db->affected_rows() >= 0;
   }
+
+  public function get_services_for_booking($booking_id)
+  {
+    return $this->db->get_where('services', ['booking_id' => $booking_id])->result_array();
+  }
 }

@@ -50,9 +50,15 @@ const Layout = () => {
 							variant="h6"
 							noWrap
 							component="div"
-							sx={{ flexGrow: 1 }}
+							sx={{
+								flexGrow: 1,
+								fontWeight: 400,
+								color: "white",
+								letterSpacing: ".1rem",
+								fontSize: { xs: "1.8rem", sm: "2rem" },
+							}}
 						>
-							{t("dashboard")}
+							<span style={{ fontWeight: 700 }}>Emax</span> hotels
 						</Typography>
 						<FormControlLabel
 							sx={{ color: "white" }}

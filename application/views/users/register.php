@@ -24,8 +24,26 @@
       <input type="text" name="email" class="form-control" value="<?php echo set_value('email'); ?>" />
     </div>
     <div class="form-group">
-      <label for="business_name">Business Name (Optional)</label>
+      <label for="business_name">Business Name</label>
       <input type="text" name="business_name" class="form-control" value="<?php echo set_value('business_name'); ?>" />
+    </div>
+    <div class="form-group">
+      <label for="business_name_lang">Business Name (Second Language)</label>
+      <input type="text" name="business_name_lang" class="form-control"
+        value="<?php echo set_value('business_name_lang'); ?>" />
+    </div>
+    <div class="form-group">
+      <label for="trn_number">TRN Number</label>
+      <input type="text" name="trn_number" class="form-control" value="<?php echo set_value('trn_number'); ?>" />
+    </div>
+    <div class="form-group">
+      <label for="business_address">Business Address (Optional)</label>
+      <textarea name="business_address" class="form-control"
+        rows="3"><?php echo set_value('business_address'); ?></textarea>
+    </div>
+    <div class="form-group">
+      <label for="phone_number">Phone Number (Optional)</label>
+      <input type="text" name="phone_number" class="form-control" value="<?php echo set_value('phone_number'); ?>" />
     </div>
     <div class="form-group">
       <label for="password">Password</label>

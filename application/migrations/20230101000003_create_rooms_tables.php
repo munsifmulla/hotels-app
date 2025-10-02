@@ -41,7 +41,6 @@ class Migration_Create_rooms_tables extends CI_Migration
       'room_number' => array(
         'type' => 'VARCHAR',
         'constraint' => '20',
-        'unique' => TRUE,
       ),
       'room_type_id' => array(
         'type' => 'BIGINT',
@@ -96,6 +95,7 @@ class Migration_Create_rooms_tables extends CI_Migration
     $this->dbforge->create_table('rooms');
     $this->db->query('ALTER TABLE `rooms` ADD CONSTRAINT `fk_rooms_hotel_id` FOREIGN KEY (`hotel_id`) REFERENCES `hotels`(`id`) ON DELETE CASCADE ON UPDATE CASCADE');
     $this->db->query('ALTER TABLE `rooms` ADD CONSTRAINT `fk_rooms_room_type_id` FOREIGN KEY (`room_type_id`) REFERENCES `room_types`(`id`) ON DELETE CASCADE ON UPDATE CASCADE');
+    $this->db->query('ALTER TABLE `rooms` ADD UNIQUE INDEX `unique_room_per_hotel` (`hotel_id`, `room_number`)');
   }
 
   public function down()

@@ -50,4 +50,17 @@ class Invoice_model extends CI_Model
     $this->db->where('id', $invoice_id);
     return $this->db->delete('invoices');
   }
+
+  public function get_last_invoice_for_user($prefix, $user_id)
+  {
+    $this->db->select('i.invoice_number');
+    $this->db->from('invoices i');
+    $this->db->join('bookings b', 'i.booking_id = b.id');
+    $this->db->join('user_hotels uh', 'b.hotel_id = uh.hotel_id');
+    $this->db->where('uh.user_id', $user_id);
+    $this->db->like('i.invoice_number', $prefix . '-', 'after');
+    $this->db->order_by('i.id', 'DESC'); // Order by creation time
+    $this->db->limit(1);
+    return $this->db->get()->row_array();
+  }
 }

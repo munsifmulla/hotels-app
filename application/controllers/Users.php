@@ -70,7 +70,10 @@ class Users extends CI_Controller
         'username' => $this->input->post('username'),
         'email' => empty($email) ? NULL : $email,
         'business_name' => $this->input->post('business_name'),
+        'business_name_lang' => $this->input->post('business_name_lang'),
         'trn_number' => $this->input->post('trn_number'),
+        'business_address' => $this->input->post('business_address'),
+        'phone_number' => $this->input->post('phone_number'),
         'password' => $this->input->post('password'),
         'hotel_ids' => [] // No hotels selected from form anymore
       );
@@ -187,7 +190,10 @@ class Users extends CI_Controller
         'username' => $this->input->post('username'),
         'email' => empty($email) ? NULL : $email,
         'business_name' => $this->input->post('business_name'),
+        'business_name_lang' => $this->input->post('business_name_lang'),
         'trn_number' => $this->input->post('trn_number'),
+        'business_address' => $this->input->post('business_address'),
+        'phone_number' => $this->input->post('phone_number'),
       );
 
       if ($this->User_model->update_user($user_id, $data)) {
@@ -199,7 +205,10 @@ class Users extends CI_Controller
             'username' => $data['username'],
             'email' => $data['email'],
             'business_name' => $data['business_name'],
-            'trn_number' => $data['trn_number']
+            'business_name_lang' => $data['business_name_lang'],
+            'trn_number' => $data['trn_number'],
+            'business_address' => $data['business_address'],
+            'phone_number' => $data['phone_number']
           ]
         ];
         $this->output->set_content_type('application/json')->set_output(json_encode($response));
@@ -374,7 +383,10 @@ class Users extends CI_Controller
         'userId' => $user_id,
         'hotelIds' => array_map('intval', $hotel_ids),
         'business_name' => $user['business_name'],
-        'trn_number' => $user['trn_number']
+        'trn_number' => $user['trn_number'],
+        'address' => $user['business_address'],
+        'email' => $user['email'],
+        'phone_number' => $user['phone_number']
       ]
     ];
 

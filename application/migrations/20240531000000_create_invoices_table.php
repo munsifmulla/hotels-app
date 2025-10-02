@@ -18,6 +18,12 @@ class Migration_Create_invoices_table extends CI_Migration
         'constraint' => 20,
         'unsigned' => TRUE,
       ),
+      'invoice_number' => array(
+        'type' => 'VARCHAR',
+        'constraint' => '50',
+        'null' => TRUE,
+        'unique' => TRUE,
+      ),
       'total_amount' => array(
         'type' => 'DECIMAL',
         'constraint' => '10,2',

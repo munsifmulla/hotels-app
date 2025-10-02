@@ -19,6 +19,6 @@ class Migration_Add_govtid_to_guests_table extends CI_Migration
 
   public function down()
   {
-    $this->dbforge->drop_column('guests', 'govt_id_number');
+    $this->dbforge->drop_column('guests', 'govt_id');
   }
 }

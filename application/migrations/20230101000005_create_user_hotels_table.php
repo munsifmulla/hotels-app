@@ -32,7 +32,6 @@ class Migration_Create_user_hotels_table extends CI_Migration
 
   public function down()
   {
-    // Foreign key checks are disabled in a later migration
     $this->dbforge->drop_table('user_hotels', TRUE);
   }
 }

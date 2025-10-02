@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import { Delete as DeleteIcon } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const modalStyle = {
 	position: "absolute",
@@ -34,13 +35,9 @@ const modalStyle = {
 };
 
 const ServicesManagementModal = ({ open, onClose, booking, hotelId }) => {
-	const {
-		getServicesForBooking,
-		getServiceTypes,
-		addService,
-		removeService,
-		updateBooking,
-	} = useAuth();
+	const { getServicesForBooking, getServiceTypes, addService, removeService } =
+		useAuth();
+	const { t } = useTranslation();
 	const [services, setServices] = useState([]);
 	const [serviceTypes, setServiceTypes] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -82,13 +79,6 @@ const ServicesManagementModal = ({ open, onClose, booking, hotelId }) => {
 				service_id: newServiceId,
 			});
 
-			// Update the booking's total price
-			const newTotalPrice =
-				parseFloat(booking.total_price) + parseFloat(serviceToAdd.price);
-			await updateBooking(booking.id, {
-				total_price: newTotalPrice.toFixed(2),
-			});
-
 			// Refresh the data
 			fetchServicesData();
 			setNewServiceId("");
@@ -106,13 +96,6 @@ const ServicesManagementModal = ({ open, onClose, booking, hotelId }) => {
 
 			// Remove the service
 			await removeService(service.id);
-
-			// Update the booking's total price
-			const newTotalPrice =
-				parseFloat(booking.total_price) - parseFloat(serviceType.price);
-			await updateBooking(booking.id, {
-				total_price: newTotalPrice.toFixed(2),
-			});
 
 			// Refresh the data
 			fetchServicesData();
@@ -132,7 +115,9 @@ const ServicesManagementModal = ({ open, onClose, booking, hotelId }) => {
 		<Modal open={open} onClose={onClose}>
 			<Box sx={modalStyle}>
 				<Typography variant="h6" gutterBottom>
-					Manage Services for Booking #{booking?.id}
+					{t("manage_services_for_booking", {
+						bookingId: booking?.id,
+					})}
 				</Typography>
 				{loading ? (
 					<CircularProgress />
@@ -141,9 +126,9 @@ const ServicesManagementModal = ({ open, onClose, booking, hotelId }) => {
 						<Table>
 							<TableHead>
 								<TableRow>
-									<TableCell>Service</TableCell>
-									<TableCell align="right">Price</TableCell>
-									<TableCell align="right">Actions</TableCell>
+									<TableCell>{t("service")}</TableCell>
+									<TableCell align="right">{t("price")}</TableCell>
+									<TableCell align="right">{t("actions")}</TableCell>
 								</TableRow>
 							</TableHead>
 							<TableBody>
@@ -169,10 +154,10 @@ const ServicesManagementModal = ({ open, onClose, booking, hotelId }) => {
 								<TableRow>
 									<TableCell>
 										<FormControl fullWidth size="small">
-											<InputLabel>Add Service</InputLabel>
+											<InputLabel>{t("add_service")}</InputLabel>
 											<Select
 												value={newServiceId}
-												label="Add Service"
+												label={t("add_service")}
 												onChange={(e) => setNewServiceId(e.target.value)}
 											>
 												{serviceTypes.map((type) => (
@@ -185,7 +170,7 @@ const ServicesManagementModal = ({ open, onClose, booking, hotelId }) => {
 									</TableCell>
 									<TableCell colSpan={2} align="right">
 										<Button variant="contained" onClick={handleAddService}>
-											Add
+											{t("add")}
 										</Button>
 									</TableCell>
 								</TableRow>

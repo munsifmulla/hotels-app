@@ -8,6 +8,7 @@ import startOfWeek from "date-fns/startOfWeek";
 import getDay from "date-fns/getDay";
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 
 const locales = {
@@ -25,9 +26,17 @@ const localizer = dateFnsLocalizer({
 const HotelDashboardPage = () => {
 	const { hotelId } = useParams();
 	const { getBookings, getGuests, getRooms } = useAuth();
+	const { t } = useTranslation();
 	const [events, setEvents] = useState([]);
+	const [date, setDate] = useState(new Date());
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
+
+	const messages = {
+		today: t("today"),
+		previous: t("previous"),
+		next: t("next"),
+	};
 
 	const fetchData = useCallback(async () => {
 		try {
@@ -47,8 +56,8 @@ const HotelDashboardPage = () => {
 				.map((booking) => {
 					const guest = guestMap.get(booking.guest_id);
 					const room = roomMap.get(booking.room_id);
-					const title = `Room ${room?.room_number || "?"} - ${
-						guest?.first_name || "Guest"
+					const title = `${t("room_prefix")} ${room?.room_number || "?"} - ${
+						guest?.first_name || t("guest")
 					}`;
 
 					// Adjust end date to be inclusive for display
@@ -94,6 +103,10 @@ const HotelDashboardPage = () => {
 				events={events}
 				startAccessor="start"
 				endAccessor="end"
+				views={["month"]}
+				date={date}
+				onNavigate={(newDate) => setDate(newDate)}
+				messages={messages}
 				style={{ height: "100%" }}
 			/>
 		</Box>

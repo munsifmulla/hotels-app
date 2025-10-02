@@ -9,6 +9,7 @@ import {
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const BookingStep = ({ onBack, guest, room, hotelId }) => {
 	const [checkIn, setCheckIn] = useState(null);
@@ -20,6 +21,7 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 	const { createBooking, getBookingsForRoom } = useAuth();
+	const { t } = useTranslation();
 
 	useEffect(() => {
 		const fetchRoomBookings = async () => {
@@ -63,11 +65,13 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 	const isDateRangeConflict = (start, end) => {
 		if (!start || !end) return false;
 		for (const existingBooking of roomBookings) {
-			const existingStart = new Date(existingBooking.check_in_date);
-			const existingEnd = new Date(existingBooking.check_out_date);
-			// Overlap condition: (StartA < EndB) and (EndA > StartB)
-			if (start < existingEnd && end > existingStart) {
-				return true;
+			if (existingBooking.status === "confirmed") {
+				const existingStart = new Date(existingBooking.check_in_date);
+				const existingEnd = new Date(existingBooking.check_out_date);
+				// Overlap condition: (StartA < EndB) and (EndA > StartB)
+				if (start < existingEnd && end > existingStart) {
+					return true;
+				}
 			}
 		}
 		return false;
@@ -94,7 +98,7 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 				total_price: totalPrice,
 			};
 			await createBooking(bookingData);
-			setSuccessMessage("Booking confirmed successfully!");
+			setSuccessMessage(t("booking_confirmed_successfully"));
 		} catch (err) {
 			setError(err.message);
 		} finally {
@@ -104,29 +108,29 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 
 	return (
 		<Box>
-			<Typography variant="h6">Confirm Booking</Typography>
+			<Typography variant="h6">{t("confirm_booking")}</Typography>
 			{successMessage ? (
 				<Box sx={{ my: 4, textAlign: "center" }}>
 					<Typography variant="h5" color="success.main">
 						{successMessage}
 					</Typography>
 					<Typography sx={{ mt: 1 }}>
-						The room status has been updated. You can now close this window.
+						{t("room_status_updated_message")}
 					</Typography>
 				</Box>
 			) : (
 				<>
 					<Typography>
-						<b>Guest:</b> {guest.first_name} {guest.last_name}
+						<b>{t("guest")}:</b> {guest.first_name} {guest.last_name}
 					</Typography>
 					<Typography>
-						<b>Room:</b> {room.room_number}
+						<b>{t("room")}:</b> {room.room_number}
 					</Typography>
 
 					<LocalizationProvider dateAdapter={AdapterDateFns}>
 						<Box sx={{ display: "flex", gap: 2, mt: 2 }}>
 							<DatePicker
-								label="Check-in Date"
+								label={t("check_in")}
 								value={checkIn}
 								onChange={(newValue) => setCheckIn(newValue)}
 								shouldDisableDate={shouldDisableDate}
@@ -134,7 +138,7 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 								disablePast
 							/>
 							<DatePicker
-								label="Check-out Date"
+								label={t("check_out")}
 								value={checkOut}
 								onChange={(newValue) => setCheckOut(newValue)}
 								shouldDisableDate={shouldDisableDate}
@@ -150,14 +154,14 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 					</LocalizationProvider>
 					{numberOfNights > 0 && (
 						<Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-							Total Nights: {numberOfNights}
+							{t("total_nights", { count: numberOfNights })}
 						</Typography>
 					)}
 					<TextField
 						margin="normal"
 						required
 						fullWidth
-						label="Total Price"
+						label={t("price")}
 						type="number"
 						value={totalPrice}
 						InputProps={{
@@ -168,14 +172,14 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 					{error && <Typography color="error">{error}</Typography>}
 
 					<Box sx={{ display: "flex", justifyContent: "space-between", mt: 3 }}>
-						<Button onClick={onBack}>Back</Button>
+						<Button onClick={onBack}>{t("back")}</Button>
 						<Button
 							variant="contained"
 							color="primary"
 							onClick={handleBooking}
 							disabled={loading || !!error}
 						>
-							{loading ? <CircularProgress size={24} /> : "Confirm & Book"}
+							{loading ? <CircularProgress size={24} /> : t("confirm_and_book")}
 						</Button>
 					</Box>
 				</>

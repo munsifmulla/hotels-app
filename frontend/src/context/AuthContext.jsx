@@ -643,10 +643,23 @@ const AuthProvider = ({ children }) => {
 
 	const getServicesForBooking = async (bookingId) => {
 		if (!token) throw new Error("Authentication token not found.");
-		// This is a frontend-only filter for now.
-		// For larger scale, you'd create a backend endpoint: /api/services/booking/:bookingId
-		const allServices = await getServices(tokenPayload.data.hotelIds[0]); // Assuming one hotel for now
-		return allServices.filter((s) => s.booking_id === bookingId);
+		const response = await fetch(`/api/services/booking/${bookingId}`, {
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token}`,
+			},
+		});
+
+		const data = await response.json();
+
+		if (response.ok) {
+			return data;
+		} else {
+			throw new Error(
+				data.message || "Failed to fetch services for the booking"
+			);
+		}
 	};
 
 	const value = {

@@ -42,8 +42,10 @@
                 <a href="#" class="btn btn-sm btn-info" data-toggle="modal" data-target="#editUserModal"
                   data-userid="<?php echo $user['id']; ?>" data-username="<?php echo html_escape($user['username']); ?>"
                   data-email="<?php echo html_escape($user['email']); ?>"
-                  data-businessname="<?php echo html_escape($user['business_name']); ?>"
-                  data-trnnumber="<?php echo html_escape($user['trn_number']); ?>" title="Edit User"><i
+                  data-businessname="<?php echo html_escape($user['business_name']); ?>" data-businessnamelang="<?php echo html_escape($user['business_name_lang']); ?>"
+                  data-trnnumber="<?php echo html_escape($user['trn_number']); ?>"
+                      data-businessaddress="<?php echo html_escape($user['business_address']); ?>"
+                  data-phonenumber="<?php echo html_escape($user['phone_number']); ?>" title="Edit User"><i
                     class="fa fa-edit"></i> User</a>
                 <button class="btn btn-sm btn-warning ml-1" type="button" title="Reset Password" data-toggle="modal"
                   data-target="#resetPasswordModal" data-userid="<?php echo $user['id']; ?>"
@@ -61,13 +63,13 @@
                   data-target="#deleteUserModal" data-userid="<?php echo $user['id']; ?>"
                   data-username="<?php echo html_escape($user['username']); ?>"><i class="fa fa-trash"></i></a>
               </td>
-            </tr>
-          <?php endforeach; ?>
-        <?php else: ?>
+                </tr>
+              <?php endforeach; ?>
+          <?php else: ?>
           <tr>
             <td colspan="6" class="text-center">No users found.</td>
-          </tr>
-        <?php endif; ?>
+              </tr>
+          <?php endif; ?>
       </tbody>
     </table>
   </div>
@@ -175,8 +177,20 @@
             <input type="text" name="business_name" id="edit-business-name" class="form-control">
           </div>
           <div class="form-group">
+            <label for="edit_business_name_lang">Business Name (Second Language)</label>
+            <input type="text" name="business_name_lang" id="edit-business-name-lang" class="form-control">
+          </div>
+          <div class="form-group">
             <label for="edit_trn_number">TRN Number</label>
             <input type="text" name="trn_number" id="edit-trn-number" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit_business_address">Business Address (Optional)</label>
+            <textarea name="business_address" id="edit-business-address" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="edit_phone_number">Phone Number (Optional)</label>
+            <input type="text" name="phone_number" id="edit-phone-number" class="form-control">
           </div>
         </div>
         <div class="modal-footer">
