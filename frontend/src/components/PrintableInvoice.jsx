@@ -20,17 +20,22 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import i18n from "../i18n";
 
-const PrintableInvoice = ({ invoice, booking, guest, services, onClose }) => {
+const PrintableInvoice = ({
+	invoice,
+	booking,
+	guest,
+	room,
+	services,
+	onClose,
+}) => {
 	const { t } = useTranslation();
 	const componentRef = useRef();
 	const { tokenPayload } = useAuth();
 	const handlePrint = useReactToPrint({
 		contentRef: componentRef,
-		pageStyle: `
-      @page { margin: 1.5cm; }
-    `,
+		pageStyle: `@page { size: auto; margin: 10mm; }`,
 	});
-	if (!invoice || !booking || !guest || !services) return null;
+	if (!invoice || !booking || !guest || !room || !services) return null;
 
 	// Helper function to generate TLV (Tag-Length-Value) for ZATCA e-invoicing QR code
 	const generateZatcaTlv = () => {
@@ -73,140 +78,237 @@ const PrintableInvoice = ({ invoice, booking, guest, services, onClose }) => {
 		);
 	};
 
+	const stayDuration = Math.ceil(
+		(new Date(booking.check_out_date) - new Date(booking.check_in_date)) /
+			(1000 * 60 * 60 * 24)
+	);
+
 	return (
 		<Box>
-			<Box
-				ref={componentRef}
-				sx={{ p: 1, border: "1px solid #ccc", my: 2 }}
-				dir={i18n.language === "ar" ? "rtl" : "ltr"}
-			>
+			<Box ref={componentRef} dir={i18n.language === "ar" ? "rtl" : "ltr"}>
 				<Typography
 					variant="h6"
 					align="center"
 					gutterBottom
-					sx={{ fontSize: "0.7rem" }}
+					sx={{ fontSize: "1.2rem", fontWeight: "bold" }}
 				>
 					{t("invoice")}
 				</Typography>
-				<Typography
-					variant="h6"
-					color="primary"
-					sx={{ fontWeight: "bold", fontSize: "1rem" }}
-				>
-					{tokenPayload?.data?.business_name}
-				</Typography>
-				<p style={{ fontSize: "0.8rem", margin: 0 }}>
-					{tokenPayload?.data?.email}
-				</p>
-				<p style={{ fontSize: "0.8rem", margin: 0 }}>
-					{tokenPayload?.data?.phone_number}
-				</p>
-				<p style={{ fontSize: "0.8rem", margin: 0 }}>
-					{tokenPayload?.data?.address}
-				</p>
-				<p style={{ fontSize: "0.8rem", margin: 0 }}>
-					{tokenPayload?.data?.trn_number}
-				</p>
-				<Divider sx={{ my: 2 }} />
-				<Box
-					sx={{
-						display: "flex",
-						justifyContent: "space-between",
-					}}
-				>
-					<Typography sx={{ fontSize: "0.8rem" }}>
-						<b>{t("invoice_number")}</b> {invoice.invoice_number}
-					</Typography>
-					<Typography sx={{ fontSize: "0.8rem" }}>
-						<b>{t("invoice_date")}</b>{" "}
-						{new Date(invoice.invoice_date).toLocaleDateString()}
-					</Typography>
-				</Box>
-				<Box sx={{ mt: 1 }}>
-					<Typography sx={{ fontSize: "0.8rem" }}>
-						<b>{t("guest_name")}</b> {guest.first_name} {guest.last_name}
-					</Typography>
-					<Typography sx={{ fontSize: "0.8rem" }}>
-						<b>{t("guest_email")}</b> {guest.email} {guest.last_name}
-					</Typography>
-					{guest.govt_id && (
-						<Typography sx={{ fontSize: "0.8rem" }}>
-							<b>{t("guest_id")}</b> {guest.govt_id}
+				<Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+					<Box>
+						<Typography
+							variant="h6"
+							color="primary"
+							sx={{ fontWeight: "bold", fontSize: "1rem" }}
+						>
+							{tokenPayload?.data?.business_name}
 						</Typography>
-					)}
+						<Typography sx={{ fontSize: "0.65rem" }}>
+							{tokenPayload?.data?.address}
+						</Typography>
+						<Typography sx={{ fontSize: "0.65rem" }}>
+							{tokenPayload?.data?.phone_number}
+						</Typography>
+						<Typography sx={{ fontSize: "0.65rem" }}>
+							{tokenPayload?.data?.email}
+						</Typography>
+						<Typography sx={{ fontSize: "0.65rem" }}>
+							TRN: {tokenPayload?.data?.trn_number}
+						</Typography>
+					</Box>
+					<Box sx={{ textAlign: "right" }}>
+						<Typography sx={{ fontSize: "0.8rem" }}>
+							<b>{t("invoice_number")}</b> {invoice.invoice_number}
+						</Typography>
+						<Typography sx={{ fontSize: "0.8rem" }}>
+							<b>{t("invoice_date")}</b>{" "}
+							{new Date(invoice.invoice_date).toLocaleDateString()}
+						</Typography>
+						<Typography sx={{ fontSize: "0.8rem" }}>
+							<b>{t("mode_of_payment")}:</b> {invoice.mode_of_payment}
+						</Typography>
+						{invoice.mode_of_payment === "Online" && (
+							<Typography sx={{ fontSize: "0.8rem" }}>
+								<b>{t("transaction_id")}:</b> {invoice.transaction_number}
+							</Typography>
+						)}
+					</Box>
 				</Box>
-				<Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
-					<Typography>
-						<b>{t("check_in_date")}</b>{" "}
-						{new Date(booking.check_in_date).toLocaleDateString()}
-					</Typography>
-					<Typography>
-						<b>{t("check_out_date")}</b>{" "}
-						{new Date(booking.check_out_date).toLocaleDateString()}
-					</Typography>
-				</Box>
+
 				<Divider sx={{ my: 2 }} />
+
+				<Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+					<Box>
+						<Typography sx={{ fontWeight: "bold", fontSize: "0.9rem" }}>
+							{t("bill_to")}:
+						</Typography>
+						<Typography sx={{ fontSize: "0.8rem" }}>
+							<b>{t("guest_name")}</b> {guest.first_name} {guest.last_name}
+						</Typography>
+						<Typography sx={{ fontSize: "0.8rem" }}>{guest.email}</Typography>
+						{guest.govt_id && (
+							<Typography sx={{ fontSize: "0.8rem" }}>
+								{t("guest_id")} {guest.govt_id}
+							</Typography>
+						)}
+					</Box>
+					<Box sx={{ textAlign: "right" }}>
+						<Typography sx={{ fontWeight: "bold", fontSize: "0.9rem" }}>
+							{t("stay_details")}
+						</Typography>
+						<Typography sx={{ fontSize: "0.8rem" }}>
+							<b>{t("check_in_date")}</b>{" "}
+							{new Date(booking.check_in_date).toLocaleDateString()}
+						</Typography>
+						<Typography sx={{ fontSize: "0.8rem" }}>
+							<b>{t("check_out_date")}</b>{" "}
+							{new Date(booking.check_out_date).toLocaleDateString()}
+						</Typography>
+						<Typography sx={{ fontSize: "0.8rem" }}>
+							<b>{t("stay_duration", { count: stayDuration })}</b>
+						</Typography>
+					</Box>
+				</Box>
+
+				<Divider sx={{ my: 2 }} />
+
+				<Typography sx={{ fontWeight: "bold", fontSize: "0.9rem" }}>
+					{t("invoice_details")}:
+				</Typography>
 				<TableContainer>
 					<Table size="small">
 						<TableHead>
-							<TableRow>
-								<TableCell sx={{ fontWeight: "bold" }}>
+							<TableRow sx={{ "& th": { borderBottom: "1px solid black" } }}>
+								<TableCell
+									sx={{
+										fontWeight: "bold",
+										fontSize: "0.8rem",
+										width: "60%",
+										textAlign: i18n.language === "ar" ? "center" : "left",
+									}}
+								>
 									{t("description_of_services")}
 								</TableCell>
-								<TableCell align="right" sx={{ fontWeight: "bold" }}>
-									{t("qty")}
-								</TableCell>
-								<TableCell align="right" sx={{ fontWeight: "bold" }}>
-									{t("rate")}
-								</TableCell>
-								<TableCell align="right" sx={{ fontWeight: "bold" }}>
+								<TableCell></TableCell>
+								<TableCell
+									align="right"
+									sx={{ fontWeight: "bold", fontSize: "0.8rem" }}
+								>
 									{t("amount")}
 								</TableCell>
 							</TableRow>
 						</TableHead>
 						<TableBody>
 							<TableRow>
-								<TableCell>{t("room_charges")}</TableCell>
-								<TableCell align="right">1</TableCell>
-								<TableCell align="right">{booking.total_price}</TableCell>
-								<TableCell align="right">{booking.total_price}</TableCell>
+								<TableCell
+									sx={{
+										fontSize: "0.8rem",
+										textAlign: i18n.language === "ar" ? "right" : "left",
+									}}
+								>
+									{t("room_charges")} ({t("room_prefix")} {room.room_number})
+								</TableCell>
+								<TableCell></TableCell>
+								<TableCell align="right" sx={{ fontSize: "0.8rem" }}>
+									{booking.total_price}
+								</TableCell>
 							</TableRow>
 							{services.map((service) => (
 								<TableRow key={service.id}>
-									<TableCell>{service.name}</TableCell>
-									<TableCell align="right">1</TableCell>
-									<TableCell align="right">{service.price}</TableCell>
-									<TableCell align="right">{service.price}</TableCell>
+									<TableCell
+										sx={{
+											fontSize: "0.8rem",
+											textAlign: i18n.language === "ar" ? "right" : "left",
+										}}
+									>
+										{service.name}
+									</TableCell>
+									<TableCell></TableCell>
+									<TableCell align="right" sx={{ fontSize: "0.8rem" }}>
+										{service.price}
+									</TableCell>
 								</TableRow>
 							))}
-							<TableRow>
-								<TableCell colSpan={2} />
-								<TableCell align="right">{t("discount")}</TableCell>
-								<TableCell align="right" sx={{ color: "error.main" }}>
+							{/* Summary Section */}
+							<TableRow sx={{ "& td": { border: 0 } }}>
+								<TableCell rowSpan={6} />
+								<TableCell
+									colSpan={1}
+									sx={{ borderTop: "1px solid black", fontSize: "0.8rem" }}
+									align="right"
+								>
+									{t("total_amount")}
+								</TableCell>
+								<TableCell
+									align="right"
+									sx={{ borderTop: "1px solid black", fontSize: "0.8rem" }}
+								>
+									{invoice.total_amount}
+								</TableCell>
+							</TableRow>
+							<TableRow sx={{ "& td": { border: 0 } }}>
+								<TableCell
+									colSpan={1}
+									align="right"
+									sx={{ fontSize: "0.8rem" }}
+								>
+									{t("advance_amount")}
+								</TableCell>
+								<TableCell
+									align="right"
+									sx={{ color: "success.main", fontSize: "0.8rem" }}
+								>
+									- {booking.advance_amount}
+								</TableCell>
+							</TableRow>
+							<TableRow sx={{ "& td": { border: 0 } }}>
+								<TableCell
+									colSpan={1}
+									align="right"
+									sx={{ fontSize: "0.8rem" }}
+								>
+									{t("discount")}
+								</TableCell>
+								<TableCell
+									align="right"
+									sx={{ color: "error.main", fontSize: "0.8rem" }}
+								>
 									- {invoice.discount}
 								</TableCell>
 							</TableRow>
-							<TableRow>
-								<TableCell colSpan={2} />
-								<TableCell align="right">{t("subtotal")}</TableCell>
-								<TableCell align="right">{invoice.final_amount}</TableCell>
+							<TableRow sx={{ "& td": { border: 0 } }}>
+								<TableCell
+									colSpan={1}
+									align="right"
+									sx={{ fontSize: "0.8rem" }}
+								>
+									{t("subtotal")}
+								</TableCell>
+								<TableCell align="right" sx={{ fontSize: "0.8rem" }}>
+									{invoice.final_amount}
+								</TableCell>
 							</TableRow>
-							<TableRow>
-								<TableCell colSpan={2} />
-								<TableCell align="right">
+							<TableRow sx={{ "& td": { border: 0 } }}>
+								<TableCell
+									colSpan={1}
+									align="right"
+									sx={{ fontSize: "0.8rem" }}
+								>
 									{t("vat_percent_label", {
 										percent: parseInt(invoice.vat_percent, 10),
 									})}
 								</TableCell>
-								<TableCell align="right">{invoice.vat_amount}</TableCell>
+								<TableCell align="right" sx={{ fontSize: "0.8rem" }}>
+									{invoice.vat_amount}
+								</TableCell>
 							</TableRow>
-							<TableRow>
-								<TableCell colSpan={2} />
+							<TableRow sx={{ "& td": { border: 0 } }}>
 								<TableCell
+									colSpan={1}
 									align="right"
 									sx={{ fontWeight: "bold", fontSize: "1rem" }}
 								>
-									{t("grand_total")}
+									{t("balance_due")}
 								</TableCell>
 								<TableCell
 									align="right"
@@ -215,7 +317,8 @@ const PrintableInvoice = ({ invoice, booking, guest, services, onClose }) => {
 									{t("currency")}{" "}
 									{(
 										parseFloat(invoice.final_amount) +
-										parseFloat(invoice.vat_amount)
+										parseFloat(invoice.vat_amount) -
+										parseFloat(booking.advance_amount)
 									).toFixed(2)}
 								</TableCell>
 							</TableRow>
@@ -239,21 +342,26 @@ const PrintableInvoice = ({ invoice, booking, guest, services, onClose }) => {
 							{t("terms_and_conditions")}
 						</Typography>
 						<List dense sx={{ p: 0, fontSize: "0.4rem" }}>
-							<ListItem sx={{ p: 0, m: 0, fontSize: "0.4rem" }}>
-								<ListItemText primary={`- ${t("term_1")}`} />
-							</ListItem>
-							<ListItem sx={{ p: 0, m: 0, fontSize: "0.4rem" }}>
-								<ListItemText primary={`- ${t("term_2")}`} />
-							</ListItem>
-							<ListItem sx={{ p: 0, m: 0, fontSize: "0.4rem" }}>
-								<ListItemText primary={`- ${t("term_3")}`} />
-							</ListItem>
-							<ListItem sx={{ p: 0, m: 0, fontSize: "0.4rem" }}>
-								<ListItemText primary={`- ${t("term_4")}`} />
-							</ListItem>
-							<ListItem sx={{ p: 0, m: 0, fontSize: "0.4rem" }}>
-								<ListItemText primary={`- ${t("term_5")}`} />
-							</ListItem>
+							{[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
+								<ListItem
+									key={i}
+									sx={{
+										p: 0,
+										m: 0,
+										fontSize: "0.4rem",
+										textAlign: i18n.language === "ar" ? "right" : "left",
+									}}
+								>
+									<ListItemText
+										primary={`- ${t(`term_${i}`)}`}
+										primaryTypographyProps={{
+											sx: {
+												fontSize: "0.6rem",
+											},
+										}}
+									/>
+								</ListItem>
+							))}
 						</List>
 					</Box>
 					<Box sx={{ textAlign: "center" }}>
@@ -261,22 +369,30 @@ const PrintableInvoice = ({ invoice, booking, guest, services, onClose }) => {
 					</Box>
 				</Box>
 				<Divider sx={{ my: 2 }} />
-				<Box sx={{ fontSize: "0.8rem" }}>
-					<Typography variant="h6" sx={{ fontSize: "1rem", mb: 1 }}>
-						{t("payment_details")}
-					</Typography>
-					<Typography>
-						{t("mode_of_payment")}: {invoice.mode_of_payment}
-					</Typography>
-					{invoice.mode_of_payment === "Online" && (
-						<Typography>
-							{t("transaction_id")}: {invoice.transaction_number}
-						</Typography>
-					)}
-				</Box>
 				<Typography variant="body2" align="center" flex={1} sx={{ mt: 3 }}>
 					{t("thank_you_message")}
 				</Typography>
+				<Box
+					sx={{
+						display: "flex",
+						justifyContent: "space-between",
+						mt: 8,
+						pt: 4,
+					}}
+				>
+					<Box sx={{ width: "40%", textAlign: "center" }}>
+						<Divider />
+						<Typography sx={{ fontSize: "0.8rem", mt: 1 }}>
+							{t("guest_signature")}
+						</Typography>
+					</Box>
+					<Box sx={{ width: "40%", textAlign: "center" }}>
+						<Divider />
+						<Typography sx={{ fontSize: "0.8rem", mt: 1 }}>
+							{t("authorised_signature")}
+						</Typography>
+					</Box>
+				</Box>
 			</Box>
 			<Box sx={{ display: "flex", gap: 2, mt: 2 }}>
 				<Button onClick={onClose} variant="outlined" fullWidth>

@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import PrintableInvoice from "./PrintableInvoice";
+import { useTranslation } from "react-i18next";
 
 const modalStyle = {
 	position: "absolute",
@@ -29,9 +30,10 @@ const modalStyle = {
 	overflowY: "auto",
 };
 
-const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
+const InvoiceModal = ({ open, onClose, booking, room, existingInvoice }) => {
+	const { t } = useTranslation();
 	const [discount, setDiscount] = useState(0);
-	const [vatPercent, setVatPercent] = useState(15); // Default VAT
+	const [vatPercent, setVatPercent] = useState(0); // Default TAX
 	const [modeOfPayment, setModeOfPayment] = useState("Cash");
 	const [transactionNumber, setTransactionNumber] = useState("");
 	const [finalAmount, setFinalAmount] = useState(0);
@@ -100,7 +102,8 @@ const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 			const final = total - disc;
 			const vatP = parseFloat(vatPercent) || 0;
 			const vat = final * (vatP / 100);
-			const grand = final + vat;
+			const advance = parseFloat(booking.advance_amount) || 0;
+			const grand = final + vat - advance;
 
 			setFinalAmount(final.toFixed(2));
 			setVatAmount(vat.toFixed(2));
@@ -164,6 +167,7 @@ const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 						guest={guestDetails}
 						invoice={generatedInvoice}
 						booking={booking}
+						room={room}
 						services={detailedServices}
 						onClose={handleClose}
 					/>
@@ -202,7 +206,7 @@ const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 							</Grid>
 							<Grid item xs={12} sm={6}>
 								<TextField
-									label="VAT %"
+									label={t("vat_percent_label", { percent: "" })}
 									type="number"
 									value={vatPercent}
 									onChange={(e) => setVatPercent(e.target.value)}
@@ -211,10 +215,19 @@ const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 							</Grid>
 							<Grid item xs={12} sm={6}>
 								<TextField
-									label="VAT Amount"
+									label={t("vat_amount")}
 									value={vatAmount}
 									fullWidth
 									InputProps={{ readOnly: true }}
+								/>
+							</Grid>
+							<Grid item xs={12}>
+								<TextField
+									label={t("advance_amount")}
+									value={booking?.advance_amount || "0.00"}
+									fullWidth
+									InputProps={{ readOnly: true }}
+									color="success"
 								/>
 							</Grid>
 							<Grid item xs={12} sm={6}>
@@ -243,7 +256,7 @@ const InvoiceModal = ({ open, onClose, booking, existingInvoice }) => {
 							</Grid>
 						</Grid>
 						<Typography variant="h5" sx={{ mt: 2, textAlign: "right" }}>
-							Grand Total: {grandTotal}
+							{t("grand_total_label")} {grandTotal}
 						</Typography>
 						{error && (
 							<Typography color="error" sx={{ mt: 2 }}>

@@ -58,7 +58,7 @@ const Layout = () => {
 								fontSize: { xs: "1.8rem", sm: "2rem" },
 							}}
 						>
-							<span style={{ fontWeight: 700 }}>Emax</span> hotels
+							<span style={{ fontWeight: 700 }}>Alpha</span> hotels
 						</Typography>
 						<FormControlLabel
 							sx={{ color: "white" }}

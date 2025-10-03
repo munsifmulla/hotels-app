@@ -317,7 +317,7 @@ const BookingsPage = () => {
 				</Typography>
 			)}
 
-			{selectedBooking && (
+			{selectedBooking && rooms.length > 0 && (
 				<InvoiceModal
 					open={isInvoiceModalOpen}
 					onClose={() => {
@@ -325,6 +325,7 @@ const BookingsPage = () => {
 						fetchData(); // Refresh data when modal closes
 					}}
 					booking={selectedBooking}
+					room={rooms.find((r) => r.id === selectedBooking.room_id)}
 					existingInvoice={existingInvoice}
 				/>
 			)}

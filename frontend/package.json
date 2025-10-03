@@ -13,6 +13,18 @@
 		"electron:build": "npm run build && electron-builder",
 		"postinstall": "electron-builder install-app-deps"
 	},
+	"build": {
+		"appId": "com.alphahotels.app",
+		"productName": "Alpha Hotels",
+		"files": [
+			"dist/**/*",
+			"electron/**/*"
+		],
+		"directories": {
+			"buildResources": "assets"
+		},
+		"win": {}
+	},
 	"dependencies": {
 		"@emotion/react": "^11.14.0",
 		"@emotion/styled": "^11.14.1",

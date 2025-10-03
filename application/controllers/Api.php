@@ -814,6 +814,7 @@ class Api extends CI_Controller
       'check_in_date' => $input['check_in_date'],
       'check_out_date' => $input['check_out_date'],
       'total_price' => $input['total_price'],
+      'advance_amount' => isset($input['advance_amount']) ? $input['advance_amount'] : 0.00,
       'status' => isset($input['status']) ? $input['status'] : 'confirmed',
     ];
 

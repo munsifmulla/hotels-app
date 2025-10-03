@@ -15,6 +15,7 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 	const [checkIn, setCheckIn] = useState(null);
 	const [checkOut, setCheckOut] = useState(null);
 	const [totalPrice, setTotalPrice] = useState("");
+	const [advanceAmount, setAdvanceAmount] = useState("");
 	const [numberOfNights, setNumberOfNights] = useState(0);
 	const [roomBookings, setRoomBookings] = useState([]);
 	const [successMessage, setSuccessMessage] = useState("");
@@ -106,6 +107,7 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 				check_in_date: formatDate(checkIn),
 				check_out_date: formatDate(checkOut),
 				total_price: totalPrice,
+				advance_amount: advanceAmount || 0,
 			};
 			await createBooking(bookingData);
 			setSuccessMessage(t("booking_confirmed_successfully"));
@@ -177,6 +179,15 @@ const BookingStep = ({ onBack, guest, room, hotelId }) => {
 						InputProps={{
 							readOnly: true,
 						}}
+					/>
+					<TextField
+						margin="normal"
+						fullWidth
+						label={t("advance_amount")}
+						type="number"
+						value={advanceAmount}
+						onChange={(e) => setAdvanceAmount(e.target.value)}
+						InputProps={{ inputProps: { min: 0, max: totalPrice } }}
 					/>
 
 					{error && <Typography color="error">{error}</Typography>}
