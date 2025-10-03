@@ -29,6 +29,18 @@ class Api extends CI_Controller
     $this->load->model('Service_model');
     $this->load->model('Service_type_model');
     $this->load->library('encryption');
+
+    // Set CORS headers
+    header('Access-Control-Allow-Origin: *');
+    header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+    // Handle pre-flight OPTIONS request
+    if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+      http_response_code(200);
+      exit();
+    }
+
     $this->output->set_content_type('application/json');
   }
 
@@ -93,7 +105,7 @@ class Api extends CI_Controller
     $this->output->set_status_header(200)->set_output(json_encode($response_data));
   }
 
-  private function _validate_token()
+  private function _validate_token($ignore_expiration = false)
   {
     $auth_header = $this->input->get_request_header('Authorization');
     if (!$auth_header) {
@@ -110,10 +122,20 @@ class Api extends CI_Controller
 
     try {
       $key = new Key($this->config->item('jwt_key'), 'HS256');
-      $payload = JWT::decode($token, $key);
-      return $payload;
+      if ($ignore_expiration) {
+        // Temporarily allow expired tokens for specific checks like activation
+        JWT::$leeway = 7 * 24 * 60 * 60; // Allow a large leeway (e.g., 7 days)
+        $payload = JWT::decode($token, $key);
+        JWT::$leeway = 0; // Reset leeway to default
+        return $payload;
+      } else {
+        $payload = JWT::decode($token, $key);
+        return $payload;
+      }
     } catch (Exception $e) {
       $this->output->set_status_header(401)->set_output(json_encode(['status' => 'error', 'message' => 'Invalid or expired token.']));
+      // Reset leeway just in case
+      JWT::$leeway = 0;
       return false;
     }
   }
@@ -121,7 +143,7 @@ class Api extends CI_Controller
   public function activate_key()
   {
     // 1. Validate the token and get user data
-    $payload = $this->_validate_token();
+    $payload = $this->_validate_token(true); // <-- Allow expired token here
     if (!$payload) {
       return; // Error response is already sent by _validate_token
     }

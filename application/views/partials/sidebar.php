@@ -9,6 +9,6 @@
     <!-- Add other navigation links here -->
   </ul>
   <div class="sidebar-footer">
-    <p>emax.com</p>
+    <small>&copy; <?php echo date('Y'); ?> Hotel Management</small>
   </div>
 </nav>
